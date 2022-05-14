@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 
-gas_params_filename = os.path.join(os.path.dirname(__file__), "gas_parameters.csv")
+gas_params_filename = os.path.join(os.path.dirname(__file__), "gas_parameters_NORESM2-LM.csv")
 gas_params_df = pd.read_csv(gas_params_filename, skiprows=1, index_col="Gas").T
 
 

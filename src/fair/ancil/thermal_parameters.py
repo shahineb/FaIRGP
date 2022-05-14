@@ -10,7 +10,7 @@ def get_thermal_params():
         Default thermal parameters
     """
     thermal_params_filename = os.path.join(
-        os.path.dirname(__file__), "thermal_parameters.csv"
+        os.path.dirname(__file__), "thermal_parameters_NORESM2-LM.csv"
     )
     thermal_params_df = pd.read_csv(
         thermal_params_filename, skiprows=1, index_col="Thermal Box"
