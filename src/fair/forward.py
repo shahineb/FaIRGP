@@ -9,7 +9,7 @@ sys.path.append(base_dir)
 import src.fair.tools as tools
 
 
-def run(
+def _run(
     inp_ar,
     a1,
     a2,
@@ -79,7 +79,7 @@ def run(
     T = np.zeros(n_timesteps)
     # S represents the results of the calculations from the thermal boxes,
     # an Impulse Response calculation (T = sum(S))
-    S = np.zeros_like(d)
+    S = np.zeros((n_timesteps, len(d)))
     # G represents cumulative emissions,
     # while G_A represents emissions accumulated since pre-industrial times,
     # both in the same units as emissions
@@ -95,7 +95,7 @@ def run(
     g0, g1 = tools.calculate_g(a=a, tau=tau)
     for i, tstep in enumerate(timestep):
         alpha[..., i] = tools.calculate_alpha(
-            G=G, G_A=G_A, T=np.sum(S, axis=0), r0=r0, rC=rC, rT=rT, rA=rA, g0=g0, g1=g1
+            G=G, G_A=G_A, T=np.sum(S[max(i - 1, 0)], axis=0), r0=r0, rC=rC, rT=rT, rA=rA, g0=g0, g1=g1
         )
         C[..., i], R, G_A = tools.step_concentration(
             emissions=inp_ar[np.newaxis, ..., i],
@@ -111,47 +111,9 @@ def run(
         RF[..., i] = tools.step_forcing(
             C=C[..., i], PI_conc=PI_conc, f1=f1, f2=f2, f3=f3
         )
-        S, T[i] = tools.step_temperature(
-            S_old=S, F=np.sum(RF[..., i], axis=0) + ext_forcing[i], q=q, d=d, dt=tstep
+        S[i], T[i] = tools.step_temperature(
+            S_old=S[max(i - 1, 0)], F=np.sum(RF[..., i], axis=0) + ext_forcing[i], q=q, d=d, dt=tstep
         )
         G += inp_ar[..., i]
-    res = {"C": C, "RF": RF, "T": T, "alpha": alpha}
+    res = {"C": C, "RF": RF, "T": T, "S": S, "alpha": alpha}
     return res
-
-
-# def run(inp_df, cfg):
-#     """
-#     Run FaIR 2.0
-#     Parameters
-#     ----------
-#     inp_df : :obj:`pd.DataFrame`
-#         Input :obj:`pd.DataFrame` containing the timeseries to run,
-#         in IAMC compliant DataFrame format
-#         (i.e. A multiIndex of Model, Region, Scenario,
-#         Unit, Variable then Columns for time)
-#     cfg : dict
-#         Dictionary containing the configuration for this run,
-#         in format {'gas_params' : :obj:`pd.DataFrame`,
-#         'thermal_params': :obj:`pd.DataFrame`,
-#         'ext_forcing' : :obj:`pd.DataFrame`}
-#     Returns
-#     -------
-#     :obj:`pd.DataFrame`
-#         Results of the run
-#     """
-#     arg_list = tools.return_np_function_arg_list(
-#         inp_df, cfg, concentration_mode=False
-#     )
-#
-#     res_dict = _run_numpy(*arg_list)
-#
-#     res_df_iamc_compliant = tools.create_output_dataframe_iamc_compliant(
-#         inp_df,
-#         res_dict["C"],
-#         res_dict["RF"],
-#         res_dict["T"],
-#         res_dict["alpha"],
-#         arg_list[-2],
-#     )
-#
-#     return res_df_iamc_compliant
