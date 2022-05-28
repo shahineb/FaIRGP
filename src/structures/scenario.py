@@ -55,8 +55,9 @@ class ScenarioDataset(nn.Module):
             self.__setitem__(key, value)
 
     def __add__(self, scenario_dataset):
-        self.update(scenario_dataset.scenarios)
-        return self
+        left_scenarios = list(self.scenarios.values())
+        right_scenarios = list(scenario_dataset.scenarios.values())
+        return self.__class__(left_scenarios + right_scenarios, self.hist_scenario)
 
     def _clear_cache(self):
         try:
