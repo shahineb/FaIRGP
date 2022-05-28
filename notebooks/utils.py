@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from gpytorch import lazy
 
-base_dir = os.path.join(os.getcwd(), '../..')
+base_dir = os.path.join(os.getcwd(), '..')
 sys.path.append(base_dir)
 
 from src.fair import forward

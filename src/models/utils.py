@@ -1,6 +1,5 @@
 import os
 import sys
-from collections import namedtuple
 import torch
 
 base_dir = os.path.join(os.getcwd(), '..')
@@ -10,55 +9,30 @@ import src.fair as fair
 from src.fair.tools import step_I, step_kernel
 
 
-TS = namedtuple(typename='TS',
-                field_names=['times', 'emissions', 'tas', 'slices', 'scenarios'],
-                defaults=(None,) * 4)
-
-
-def make_stacked_timeseries(time_series):
-    scenarios = time_series.scenarios()
-    times = torch.cat([time_series.times[s] for s in scenarios])
-    emissions = torch.cat([time_series.emissions[s] for s in scenarios])
-    tas = torch.cat([time_series.tas[s] for s in scenarios])
-    slices = dict()
-    idx = 0
-    for scenario in time_series.scenarios():
-        if scenario == 'historical':
-            scenario_slice = slice(idx, idx + len(time_series.times['historical']))
-            slices.update({'historical': scenario_slice})
-        else:
-            start = time_series.slices[scenario].start
-            stop = time_series.slices[scenario].stop
-            hist_and_ssp_slice = slice(idx, idx + stop)
-            ssp_only_slice = slice(idx + start, idx + stop)
-            slices.update({'hist+' + scenario: hist_and_ssp_slice,
-                           scenario: ssp_only_slice})
-        idx += len(time_series.times[scenario])
-
-    stacked_time_series = TS(times=times, emissions=emissions, tas=tas, slices=slices, scenarios=slices.keys)
-    return stacked_time_series
-
-
-def compute_mean(time_series):
+def compute_means(scenario_dataset):
     base_kwargs = fair.get_params()
-    forcings = dict()
     means = dict()
-    for scenario in time_series.scenarios():
-        res = fair.run(time_series.times[scenario].numpy(),
-                       time_series.emissions[scenario].T.numpy(),
+    for name, scenario in scenario_dataset.scenarios.items():
+        res = fair.run(scenario.full_timesteps.numpy(),
+                       scenario.full_emissions.T.numpy(),
                        base_kwargs)
-        forcing, S = res['RF'], res['S']
-        forcing = forcing[:, time_series.slices[scenario]]
-        S = S[time_series.slices[scenario]]
-        forcings.update({scenario: torch.from_numpy(forcing).T.float()})
+        S = res['S']
+        S = scenario.trim_hist(S)
         means.update({scenario: torch.from_numpy(S).float()})
-    return forcings, means
+    return means
 
 
-def compute_I_scenario(stacked_ts, ts, scenario, ks, d, mu, sigma):
-    scenario_emissions_std = (ts.emissions[scenario] - mu) / sigma
-    stacked_ts_emissions_std = (stacked_ts.emissions - mu) / sigma
-    Ks = [k(stacked_ts_emissions_std, scenario_emissions_std).evaluate() for k in ks]
+def compute_I(scenario_dataset, ks, d, mu, sigma):
+    I = [compute_I_scenario(scenario_dataset, scenario, ks, d, mu, sigma)
+         for scenario in scenario_dataset.scenarios.values()]
+    I = torch.cat(I, dim=-2)
+    return I
+
+
+def compute_I_scenario(scenario_dataset, scenario, ks, d, mu, sigma):
+    scenario_emissions_std = (scenario.full_emissions - mu) / sigma
+    dataset_emissions_std = (scenario_dataset.full_emissions - mu) / sigma
+    Ks = [k(dataset_emissions_std, scenario_emissions_std).evaluate() for k in ks]
     K = torch.stack(Ks, dim=-1)
     I = torch.zeros(K.shape)
     for t in range(1, len(scenario_emissions_std)):
@@ -69,60 +43,21 @@ def compute_I_scenario(stacked_ts, ts, scenario, ks, d, mu, sigma):
     return I
 
 
-def compute_I(stacked_ts, ts, ks, d, mu, sigma):
-    I = [compute_I_scenario(stacked_ts, ts, s, ks, d, mu, sigma) for s in ts.scenarios()]
-    I = torch.cat(I, dim=-2)
-    return I
-
-
-def get_slices(stacked_ts, ts, scenario):
-    if scenario == 'historical':
-        stacked_scenario = scenario
-    else:
-        stacked_scenario = 'hist+' + scenario
-    stacked_ts_slice = stacked_ts.slices[stacked_scenario]
-    ts_slice = ts.slices[scenario]
-    return stacked_ts_slice, ts_slice
-
-
-def trim_Kj(Kj, stacked_ts, ts, scenario):
-    # Remove hist columns used for iterative scheme only
-    Kj = [Kj[:, stacked_ts.slices[s]] for s in ts.scenarios()]
+def compute_covariance(scenario_dataset, I, q, d):
+    Kj = [compute_covariance_scenario(scenario_dataset, scenario, I, q, d)
+          for scenario in scenario_dataset.scenarios.values()]
     Kj = torch.cat(Kj, dim=-2)
-    # Remove hist rows used for iterative scheme only
-    Kj = Kj[ts.slices[scenario]]
+    Kj = scenario_dataset.trim_hist(Kj)
     return Kj
 
 
-def compute_covariance_scenario(I, stacked_ts, ts, scenario, q, d):
-    stacked_ts_slice, ts_slice = get_slices(stacked_ts, ts, scenario)
-    size = stacked_ts_slice.stop - stacked_ts_slice.start
-    I_ts = I[stacked_ts_slice]
-    Kj = torch.zeros_like(I_ts)
-    for t in range(1, size):
+def compute_covariance_scenario(scenario_dataset, scenario, I, q, d):
+    I_scenario = I[scenario_dataset.full_slices[scenario.name]]
+    Kj = torch.zeros_like(I_scenario)
+    for t in range(1, I_scenario.size(0)):
         Kj_old = Kj[t - 1]
-        I_new = I_ts[t]
+        I_new = I_scenario[t]
         Kj_new = step_kernel(Kj_old, I_new, q.unsqueeze(0), d.unsqueeze(0))
         Kj[t] = Kj_new
-    Kj = trim_Kj(Kj, stacked_ts, ts, scenario)
+    Kj = scenario.trim_hist(Kj)
     return Kj.permute(1, 0, 2)
-
-
-def compute_covariance(I, stacked_ts, ts, q, d):
-    Kj = [compute_covariance_scenario(I, stacked_ts, ts, s, q, d) for s in ts.scenarios()]
-    Kj = torch.cat(Kj, dim=-2)
-    return Kj
-
-
-def add_ts(ts1, ts2):
-    times = {**ts1.times, **ts2.times}
-    emissions = {**ts1.emissions, **ts2.emissions}
-    slices = {**ts1.slices, **ts2.slices}
-    tas = {**ts1.tas, **ts2.tas}
-    scenarios = times.keys
-    ts = TS(times=times,
-            emissions=emissions,
-            slices=slices,
-            tas=tas,
-            scenarios=scenarios)
-    return ts

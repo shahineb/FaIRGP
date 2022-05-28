@@ -3,32 +3,26 @@ import gpytorch
 from gpytorch import settings, distributions
 from gpytorch.models import GP
 from .exact_prediction_strategy import prediction_strategy
-from .utils import make_stacked_timeseries, compute_mean, compute_I, compute_covariance, add_ts
+from .utils import compute_means, compute_I, compute_covariance
 
 
 class ThermalBoxesGP(GP):
-    def __init__(self, timeseries, kernels, q, d, likelihood):
+    def __init__(self, scenario_dataset, kernels, q, d, likelihood):
         super().__init__()
         # Register input data
-        stacked_ts = make_stacked_timeseries(timeseries)
-        self.train_ts = timeseries
-        self.train_stacked_ts = stacked_ts
-        self.register_buffer('train_tas', torch.cat([tas[self.train_ts.slices[key]] for key, tas in self.train_ts.tas.items()]))
+        self.train_scenarios = scenario_dataset
 
         # Compute train data mean and stddev
-        data = torch.cat([e[self.train_ts.slices[key]] for (key, e) in self.train_ts.emissions.items()])
-        self.mu = data.mean(dim=0)
-        self.sigma = data.std(dim=0)
+        self.mu = self.train_scenarios.emissions.mean(dim=0)
+        self.sigma = self.train_scenarios.emissions.std(dim=0)
 
         # Setup mean, kernel and likelihood
-        self.register_buffer('train_mean', self._compute_mean(self.train_ts))
+        self.register_buffer('train_mean', self._compute_mean(self.train_scenarios))
         self.kernels = torch.nn.ModuleList(kernels)
         self.likelihood = likelihood
 
         # Create training targets
-        train_targets = self.train_tas - self.train_mean
-        self.mu_targets = train_targets.mean()
-        self.sigma_targets = train_targets.std()
+        train_targets = self.train_scenarios.tas - self.train_mean
         self.register_buffer('train_targets', train_targets)
 
         # Register thermal boxes parameters
@@ -50,34 +44,30 @@ class ThermalBoxesGP(GP):
                                                        train_targets=self.train_targets,
                                                        likelihood=self.likelihood)
 
-    def _compute_mean(self, ts):
-        _, means = compute_mean(ts)
+    def _compute_mean(self, scenario_dataset):
+        means = compute_means(scenario_dataset)
         means = torch.cat([v for v in means.values()]).sum(dim=-1)
         return means
 
-    def _compute_covariance(self, stacked_ts, ts):
-        I = compute_I(stacked_ts, ts, self.kernels, self.d, self.mu, self.sigma)
-        Kj = compute_covariance(I, stacked_ts, ts, self.q, self.d)
+    def _compute_covariance(self, scenario_dataset):
+        I = compute_I(scenario_dataset, self.kernels, self.d, self.mu, self.sigma)
+        Kj = compute_covariance(scenario_dataset, I, self.q, self.d)
         return Kj
 
     def train_prior_dist(self):
-        Kj = self._compute_covariance(self.train_stacked_ts, self.train_ts)
-        # train_mean = self.train_mean.sum(dim=-1)
-        train_mean = torch.zeros(self.train_mean.size(0))
+        Kj = self._compute_covariance(self.train_scenarios)
+        train_mean = torch.zeros_like(self.train_scenarios.tas)
         train_covar = gpytorch.add_jitter(Kj.sum(dim=-1))
-        prior = distributions.MultivariateNormal(train_mean, train_covar)
-        train_prior_dist = self.likelihood(prior)
+        train_prior_dist = distributions.MultivariateNormal(train_mean, train_covar)
+        train_prior_dist = self.likelihood(train_prior_dist)
         return train_prior_dist
 
-    def forward(self, ts):
-        # mean = self._compute_mean(ts)
-        # mean = mean.sum(dim=-1)
-        mean = torch.zeros(sum([s.stop - s.start for s in ts.slices.values()]))
-        stacked_ts = make_stacked_timeseries(ts)
-        Kj = self._compute_covariance(stacked_ts, ts)
+    def forward(self, scenario_dataset):
+        mean = torch.zeros_like(scenario_dataset.tas)
+        Kj = self._compute_covariance(scenario_dataset)
         covar = gpytorch.add_jitter(Kj.sum(dim=-1))
-        mvn = distributions.MultivariateNormal(mean, covar)
-        return mvn
+        prior_dist = distributions.MultivariateNormal(mean, covar)
+        return prior_dist
 
     def __call__(self, *args, **kwargs):
         # Training mode: optimizing
@@ -96,10 +86,11 @@ class ThermalBoxesGP(GP):
                 self._setup_prediction_strategy()
 
             # Concatenate the input to the training input
-            full_ts = add_ts(self.train_ts, args[0])
+            test_scenarios = args[0]
+            train_test_scenarios = self.train_scenarios + test_scenarios
 
             # Get the joint distribution for training/test data
-            full_prior_dist = super().__call__(full_ts, **kwargs)
+            full_prior_dist = super().__call__(train_test_scenarios, **kwargs)
             full_mean, full_covar = full_prior_dist.loc, full_prior_dist.lazy_covariance_matrix
 
             # Determine the shape of the joint distribution

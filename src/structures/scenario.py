@@ -30,7 +30,8 @@ class ScenarioDataset(nn.Module):
         self.register_buffer('slices_tensor', torch.cat(slices_tensor))
 
     def trim_hist(self, timeserie):
-        return timeserie[self.slices_tensor]
+        output = timeserie[self.slices_tensor]
+        return output
 
     def __getitem__(self, idx):
         if isinstance(idx, str):
