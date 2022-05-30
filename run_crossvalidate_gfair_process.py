@@ -17,8 +17,9 @@ from docopt import docopt
 import tqdm
 import pandas as pd
 import torch
+from gpytorch import distributions
 from sklearn.model_selection import KFold
-from src.evaluation import compute_scores
+from src.evaluation import compute_scores, dump_plots
 from run_fit_gfair_process import make_data, migrate_to_device, make_model, fit
 
 
@@ -51,7 +52,12 @@ def main(args, cfg):
         posterior_dist = predict(model=model, test_data=test_data)
 
         # Evaluate on left out scenario
-        fold_scores = evaluate(posterior_dist=posterior_dist, test_data=test_data, plot=args['--plot'])
+        fold_output_dir = os.path.join(args['--o'], f"fold_{test_data.scenarios.names[0]}")
+        fold_scores = evaluate(posterior_dist=posterior_dist,
+                               test_data=test_data,
+                               model=model,
+                               plot=args['--plot'],
+                               output_dir=fold_output_dir)
         scores.append(fold_scores)
 
         # Dump scores
@@ -87,13 +93,22 @@ def predict(model, test_data):
     with torch.no_grad():
         test_posterior = model(test_data.scenarios)
         noisy_test_posterior = model.likelihood(test_posterior)
+    test_tas_fair = model._compute_mean(test_data.scenarios)
+    noisy_test_posterior = distributions.MultivariateNormal(mean=noisy_test_posterior.mean + test_tas_fair,
+                                                            covariance_matrix=noisy_test_posterior.lazy_covariance_matrix)
     return noisy_test_posterior
 
 
-def evaluate(posterior_dist, test_data, plot):
+def evaluate(posterior_dist, test_data, model, plot, output_dir):
+    # Create output directory if doesn't exists
+    os.makedirs(output_dir, exist_ok=True)
+
     # Dump plots
     if plot:
-        raise NotImplementedError
+        dump_plots(posterior_dist=posterior_dist,
+                   test_scenarios=test_data.scenarios,
+                   model=model,
+                   output_dir=output_dir)
 
     # Compute scores
     scores = compute_scores(posterior_dist, test_data.scenarios)
