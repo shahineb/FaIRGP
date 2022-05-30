@@ -96,6 +96,22 @@ class ScenarioDataset(nn.Module):
             del self.sigma
         except AttributeError:
             pass
+        try:
+            del self.mu_tas
+        except AttributeError:
+            pass
+        try:
+            del self.sigma_tas
+        except AttributeError:
+            pass
+
+    @functools.cached_property
+    def mu_tas(self):
+        return self.tas.mean()
+
+    @functools.cached_property
+    def sigma_tas(self):
+        return self.tas.std()
 
     @functools.cached_property
     def mu(self):
