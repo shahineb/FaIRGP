@@ -12,10 +12,6 @@ class ThermalBoxesGP(GP):
         # Register input data
         self.train_scenarios = scenario_dataset
 
-        # Compute train data mean and stddev
-        self.mu = self.train_scenarios.emissions.mean(dim=0)
-        self.sigma = self.train_scenarios.emissions.std(dim=0)
-
         # Setup mean, kernel and likelihood
         self.register_buffer('train_mean', self._compute_mean(self.train_scenarios))
         self.kernels = torch.nn.ModuleList(kernels)
@@ -50,7 +46,7 @@ class ThermalBoxesGP(GP):
         return means
 
     def _compute_covariance(self, scenario_dataset):
-        I = compute_I(scenario_dataset, self.kernels, self.d, self.mu, self.sigma)
+        I = compute_I(scenario_dataset, self.kernels, self.d)
         Kj = compute_covariance(scenario_dataset, I, self.q, self.d)
         return Kj
 

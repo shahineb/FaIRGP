@@ -22,14 +22,15 @@ def compute_means(scenario_dataset):
     return means
 
 
-def compute_I(scenario_dataset, ks, d, mu, sigma):
-    I = [compute_I_scenario(scenario_dataset, scenario, ks, d, mu, sigma)
+def compute_I(scenario_dataset, ks, d):
+    I = [compute_I_scenario(scenario_dataset, scenario, ks, d)
          for scenario in scenario_dataset.scenarios.values()]
     I = torch.cat(I, dim=-2)
     return I
 
 
-def compute_I_scenario(scenario_dataset, scenario, ks, d, mu, sigma):
+def compute_I_scenario(scenario_dataset, scenario, ks, d):
+    mu, sigma = scenario_dataset.mu, scenario_dataset.sigma
     scenario_emissions_std = (scenario.full_emissions - mu) / sigma
     dataset_emissions_std = (scenario_dataset.full_emissions - mu) / sigma
     Ks = [k(dataset_emissions_std, scenario_emissions_std).evaluate() for k in ks]
