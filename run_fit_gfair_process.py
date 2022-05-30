@@ -27,7 +27,6 @@ def main(args, cfg):
 
     # Move needed tensors only to device
     data = migrate_to_device(data=data, device=device)
-    # print(torch.isnan(data.scenarios.full_emissions).sum())
 
     # Instantiate model
     model = make_model(cfg=cfg, data=data).to(device)
@@ -48,17 +47,15 @@ def migrate_to_device(data, device):
 
 
 def make_model(cfg, data):
-    # Instantiate kernels of each thermal box
-    k1 = kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[0, 1, 2, 3])
-    k2 = kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[0, 1, 2, 3])
-    k3 = kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[0, 1, 2, 3])
+    # Instantiate kernel for GP prior over forcing
+    kernel = kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[0, 1, 2, 3])
 
     # Instantiate gaussian observation likelihood
     likelihood = likelihoods.GaussianLikelihood()
 
     # Instantiate FaIR-constrained GP
     model = ThermalBoxesGP(scenario_dataset=data.scenarios,
-                           kernels=[k1, k2, k3],
+                           kernel=kernel,
                            likelihood=likelihood,
                            q=data.fair_kwargs['q'],
                            d=data.fair_kwargs['d'])

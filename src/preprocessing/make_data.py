@@ -39,6 +39,10 @@ def make_data(cfg):
     input_xarrays = {key: load_emissions_dataset(filepath) for (key, filepath) in inputs_filepaths.items()}
     output_xarrays = {key: load_response_dataset(filepath) for (key, filepath) in outputs_filepaths.items()}
 
+    # Load historical emissions and temperature response xarray
+    input_xarrays.update(historical=load_emissions_dataset(os.path.join(cfg['dataset']['dirpath'], 'inputs_historical.nc')))
+    output_xarrays.update(historical=load_response_dataset(os.path.join(cfg['dataset']['dirpath'], 'outputs_historical.nc')))
+
     # Create scenario instances
     hist_scenario = make_scenario(key='historical', inputs=input_xarrays, outputs=output_xarrays)
     scenarios = dict()

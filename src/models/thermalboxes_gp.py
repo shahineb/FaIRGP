@@ -7,14 +7,14 @@ from .utils import compute_means, compute_I, compute_covariance
 
 
 class ThermalBoxesGP(GP):
-    def __init__(self, scenario_dataset, kernels, q, d, likelihood):
+    def __init__(self, scenario_dataset, kernel, q, d, likelihood):
         super().__init__()
         # Register input data
         self.train_scenarios = scenario_dataset
 
         # Setup mean, kernel and likelihood
         self.register_buffer('train_mean', self._compute_mean(self.train_scenarios))
-        self.kernels = torch.nn.ModuleList(kernels)
+        self.kernel = kernel
         self.likelihood = likelihood
 
         # Create training targets
@@ -46,7 +46,7 @@ class ThermalBoxesGP(GP):
         return means
 
     def _compute_covariance(self, scenario_dataset):
-        I = compute_I(scenario_dataset, self.kernels, self.d)
+        I = compute_I(scenario_dataset, self.kernel, self.d)
         Kj = compute_covariance(scenario_dataset, I, self.q, self.d)
         return Kj
 

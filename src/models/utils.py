@@ -22,20 +22,19 @@ def compute_means(scenario_dataset):
     return means
 
 
-def compute_I(scenario_dataset, ks, d):
-    I = [compute_I_scenario(scenario_dataset, scenario, ks, d)
+def compute_I(scenario_dataset, kernel, d):
+    I = [compute_I_scenario(scenario_dataset, scenario, kernel, d)
          for scenario in scenario_dataset.scenarios.values()]
     I = torch.cat(I, dim=-2)
     return I
 
 
-def compute_I_scenario(scenario_dataset, scenario, ks, d):
+def compute_I_scenario(scenario_dataset, scenario, kernel, d):
     mu, sigma = scenario_dataset.mu, scenario_dataset.sigma
     scenario_emissions_std = (scenario.full_emissions - mu) / sigma
     dataset_emissions_std = (scenario_dataset.full_emissions - mu) / sigma
-    Ks = [k(dataset_emissions_std, scenario_emissions_std).evaluate() for k in ks]
-    K = torch.stack(Ks, dim=-1)
-    I = torch.zeros(K.shape)
+    K = kernel(dataset_emissions_std, scenario_emissions_std).evaluate().unsqueeze(-1)
+    I = torch.zeros((K.size(0), K.size(1), len(d)))
     for t in range(1, len(scenario_emissions_std)):
         I_old = I[:, t - 1]
         K_new = K[:, t]
