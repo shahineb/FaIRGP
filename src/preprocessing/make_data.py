@@ -40,13 +40,17 @@ def make_data(cfg):
     output_xarrays = {key: load_response_dataset(filepath) for (key, filepath) in outputs_filepaths.items()}
 
     # Create scenario instances
-    hist_scenario = make_scenario('historical')
-    scenarios = {'historical': hist_scenario}
+    hist_scenario = make_scenario(key='historical', inputs=input_xarrays, outputs=output_xarrays)
+    scenarios = dict()
     for key in cfg['dataset']['keys']:
-        scenarios[key] = make_scenario(name=key,
-                                       inputs=input_xarrays,
-                                       outputs=output_xarrays,
-                                       hist_scenario=hist_scenario)
+        if key == 'historical':
+            scenario = hist_scenario
+        else:
+            scenario = make_scenario(key=key,
+                                     inputs=input_xarrays,
+                                     outputs=output_xarrays,
+                                     hist_scenario=hist_scenario)
+        scenarios[key] = scenario
 
     # Encapsulate into scenario dataset
     scenarios = ScenarioDataset(scenarios=list(scenarios.values()), hist_scenario=hist_scenario)

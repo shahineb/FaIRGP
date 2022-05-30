@@ -1,6 +1,8 @@
 """
 Description : Fits FaIR-contrained GP for global temperature response emulation
+
 Usage: run_fit_gfair_process.py  [options] --cfg=<path_to_config> --o=<output_dir>
+
 Options:
   --cfg=<path_to_config>           Path to YAML configuration file to use.
   --o=<output_dir>                 Output directory.
@@ -25,6 +27,7 @@ def main(args, cfg):
 
     # Move needed tensors only to device
     data = migrate_to_device(data=data, device=device)
+    # print(torch.isnan(data.scenarios.full_emissions).sum())
 
     # Instantiate model
     model = make_model(cfg=cfg, data=data).to(device)
@@ -71,7 +74,7 @@ def fit(model, data, cfg):
     mll = mlls.ExactMarginalLogLikelihood(model.likelihood, model)
 
     # Setup progress bar
-    training_iter = tqdm.tqdm(range(cfg['n_epochs']), desc='Iter')
+    training_iter = tqdm.tqdm(range(cfg['training']['n_epochs']), desc='Iter')
 
     for i in training_iter:
         optimizer.zero_grad()
