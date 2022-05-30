@@ -25,7 +25,8 @@ from run_fit_gfair_process import make_data, migrate_to_device, make_model, fit
 
 def main(args, cfg):
     # Make cross-validation folds iterator
-    folds = tqdm.tqdm(make_folds_iterator(cfg), desc='Folds')
+    folds = make_folds_iterator(cfg)
+    folds = tqdm.tqdm(folds, desc='Folds', total=len(cfg['dataset']['keys']) - 1)
 
     # Initialize empty list for scores
     scores = []

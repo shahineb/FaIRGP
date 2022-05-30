@@ -60,11 +60,11 @@ def compute_probabilistic_metrics(predicted_dist, groundtruth):
     Returns:
         type: dict[float]
     """
-    # Compute average LL of groundtruth under predicted posterior distribution
-    ll = predicted_dist.log_prob(groundtruth)
-
     # Create normal distribution vector
     pointwise_predicted_dict = torch.distributions.Normal(loc=predicted_dist.mean, scale=predicted_dist.stddev)
+
+    # Compute average LL of groundtruth
+    ll = pointwise_predicted_dict.log_prob(groundtruth).mean()
 
     # Compute 95% calibration score
     lb, ub = pointwise_predicted_dict.icdf(torch.tensor(0.025)), pointwise_predicted_dict.icdf(torch.tensor(0.975))
