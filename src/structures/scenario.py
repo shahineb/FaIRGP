@@ -1,6 +1,13 @@
+import os
+import sys
 import torch
 import torch.nn as nn
 import functools
+
+base_dir = os.path.join(os.getcwd(), '..')
+sys.path.append(base_dir)
+
+import src.fair as fair
 
 
 class ScenarioDataset(nn.Module):
@@ -97,11 +104,19 @@ class ScenarioDataset(nn.Module):
         except AttributeError:
             pass
         try:
-            del self.mu
+            del self.mu_emissions
         except AttributeError:
             pass
         try:
-            del self.sigma
+            del self.sigma_emissions
+        except AttributeError:
+            pass
+        try:
+            del self.mu_concentrations
+        except AttributeError:
+            pass
+        try:
+            del self.sigma_concentrations
         except AttributeError:
             pass
         try:
@@ -122,12 +137,20 @@ class ScenarioDataset(nn.Module):
         return self.tas.std()
 
     @functools.cached_property
-    def mu(self):
+    def mu_emissions(self):
         return self.emissions.mean(dim=0)
 
     @functools.cached_property
-    def sigma(self):
+    def sigma_emissions(self):
         return self.emissions.std(dim=0)
+
+    @functools.cached_property
+    def mu_concentrations(self):
+        return self.concentrations.mean(dim=0)
+
+    @functools.cached_property
+    def sigma_concentrations(self):
+        return self.concentrations.std(dim=0)
 
     @functools.cached_property
     def names(self):
@@ -154,6 +177,11 @@ class ScenarioDataset(nn.Module):
         return cum_emissions
 
     @functools.cached_property
+    def concentrations(self):
+        concentrations = torch.cat([s.concentrations for s in self.scenarios.values()])
+        return concentrations
+
+    @functools.cached_property
     def full_timesteps(self):
         full_timesteps = torch.cat([s.full_timesteps for s in self.scenarios.values()])
         return full_timesteps
@@ -172,6 +200,11 @@ class ScenarioDataset(nn.Module):
     def full_cum_emissions(self):
         full_cum_emissions = torch.cat([s.full_cum_emissions for s in self.scenarios.values()])
         return full_cum_emissions
+
+    @functools.cached_property
+    def full_concentrations(self):
+        full_concentrations = torch.cat([s.full_concentrations for s in self.scenarios.values()])
+        return full_concentrations
 
     def __len__(self):
         return len(self.scenarios)
@@ -208,6 +241,13 @@ class Scenario(nn.Module):
 
         """
         return full_timeserie[-len(self):]
+
+    def _compute_fair_concentrations(self):
+        res = fair.run(time=self.full_timesteps.numpy(),
+                       emission=self.full_emissions.T.numpy(),
+                       base_kwargs=fair.get_params())
+        full_concentrations = torch.from_numpy(res['C'].T).float()
+        return full_concentrations
 
     def forward(self):
         return self
@@ -253,8 +293,16 @@ class Scenario(nn.Module):
         return torch.cumsum(self.full_emissions, dim=0)
 
     @functools.cached_property
+    def full_concentrations(self):
+        return self._compute_fair_concentrations()
+
+    @functools.cached_property
     def cum_emissions(self):
         return self.full_cum_emissions[-len(self):]
+
+    @functools.cached_property
+    def concentrations(self):
+        return self.trim_hist(self.full_concentrations)
 
     def __len__(self):
         return len(self.timesteps)

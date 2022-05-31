@@ -1,7 +1,7 @@
 """
 Description : Fits FaIR-contrained GP for global temperature response emulation
 
-Usage: run_fit_gfair_process.py  [options] --cfg=<path_to_config> --o=<output_dir>
+Usage: fit_gfair_process.py  [options] --cfg=<path_to_config> --o=<output_dir>
 
 Options:
   --cfg=<path_to_config>           Path to YAML configuration file to use.
