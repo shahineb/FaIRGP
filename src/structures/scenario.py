@@ -134,7 +134,7 @@ class ScenarioDataset(nn.Module):
 
     @functools.cached_property
     def sigma_tas(self):
-        return self.tas.std()
+        return self.tas.std().clip(min=torch.finfo(torch.float32).eps)
 
     @functools.cached_property
     def mu_emissions(self):
@@ -142,7 +142,7 @@ class ScenarioDataset(nn.Module):
 
     @functools.cached_property
     def sigma_emissions(self):
-        return self.emissions.std(dim=0)
+        return self.emissions.std(dim=0).clip(min=torch.finfo(torch.float32).eps)
 
     @functools.cached_property
     def mu_concentrations(self):
@@ -150,7 +150,7 @@ class ScenarioDataset(nn.Module):
 
     @functools.cached_property
     def sigma_concentrations(self):
-        return self.concentrations.std(dim=0)
+        return self.concentrations.std(dim=0).clip(min=torch.finfo(torch.float32).eps)
 
     @functools.cached_property
     def names(self):

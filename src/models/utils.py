@@ -30,12 +30,12 @@ def compute_I(scenario_dataset, kernel, d):
 
 
 def compute_I_scenario(scenario_dataset, scenario, kernel, d):
-    mu, sigma = scenario_dataset.mu_concentrations, scenario_dataset.sigma_concentrations
-    scenario_concentrations_std = (scenario.full_concentrations - mu) / sigma
-    dataset_concentrations_std = (scenario_dataset.full_concentrations - mu) / sigma
-    K = kernel(dataset_concentrations_std, scenario_concentrations_std).evaluate().unsqueeze(-1)
+    mu, sigma = scenario_dataset.mu_emissions, scenario_dataset.sigma_emissions
+    scenario_emissions_std = (scenario.full_emissions - mu) / sigma
+    dataset_emissions_std = (scenario_dataset.full_emissions - mu) / sigma
+    K = kernel(dataset_emissions_std, scenario_emissions_std).evaluate().unsqueeze(-1)
     I = torch.zeros((K.size(0), K.size(1), len(d)))
-    for t in range(1, len(scenario_concentrations_std)):
+    for t in range(1, len(scenario_emissions_std)):
         I_old = I[:, t - 1]
         K_new = K[:, t]
         I_new = step_I(I_old, K_new, d.unsqueeze(0))

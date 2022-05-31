@@ -20,7 +20,7 @@ import torch
 from gpytorch import distributions
 from sklearn.model_selection import KFold
 from src.evaluation import compute_scores, dump_plots
-from run_fit_gfair_process import make_data, migrate_to_device, make_model, fit
+from fit_gfair_process import make_data, migrate_to_device, make_model, fit
 
 
 def main(args, cfg):
