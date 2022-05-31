@@ -88,6 +88,14 @@ class ScenarioDataset(nn.Module):
         except AttributeError:
             pass
         try:
+            del self.concentrations
+        except AttributeError:
+            pass
+        try:
+            del self.inputs
+        except AttributeError:
+            pass
+        try:
             del self.full_timesteps
         except AttributeError:
             pass
@@ -104,29 +112,45 @@ class ScenarioDataset(nn.Module):
         except AttributeError:
             pass
         try:
-            del self.mu_emissions
+            del self.full_concentrations
         except AttributeError:
             pass
         try:
-            del self.sigma_emissions
+            del self.full_inputs
         except AttributeError:
             pass
-        try:
-            del self.mu_concentrations
-        except AttributeError:
-            pass
-        try:
-            del self.sigma_concentrations
-        except AttributeError:
-            pass
-        try:
-            del self.mu_tas
-        except AttributeError:
-            pass
-        try:
-            del self.sigma_tas
-        except AttributeError:
-            pass
+        # try:
+        #     del self.mu_emissions
+        # except AttributeError:
+        #     pass
+        # try:
+        #     del self.sigma_emissions
+        # except AttributeError:
+        #     pass
+        # try:
+        #     del self.mu_concentrations
+        # except AttributeError:
+        #     pass
+        # try:
+        #     del self.sigma_concentrations
+        # except AttributeError:
+        #     pass
+        # try:
+        #     del self.mu_inputs
+        # except AttributeError:
+        #     pass
+        # try:
+        #     del self.sigma_inputs
+        # except AttributeError:
+        #     pass
+        # try:
+        #     del self.mu_tas
+        # except AttributeError:
+        #     pass
+        # try:
+        #     del self.sigma_tas
+        # except AttributeError:
+        #     pass
 
     @functools.cached_property
     def mu_tas(self):
@@ -151,6 +175,14 @@ class ScenarioDataset(nn.Module):
     @functools.cached_property
     def sigma_concentrations(self):
         return self.concentrations.std(dim=0).clip(min=torch.finfo(torch.float32).eps)
+
+    @functools.cached_property
+    def mu_inputs(self):
+        return self.inputs.mean(dim=0)
+
+    @functools.cached_property
+    def sigma_inputs(self):
+        return self.inputs.std(dim=0).clip(min=torch.finfo(torch.float32).eps)
 
     @functools.cached_property
     def names(self):
@@ -182,6 +214,11 @@ class ScenarioDataset(nn.Module):
         return concentrations
 
     @functools.cached_property
+    def inputs(self):
+        inputs = torch.cat([s.inputs for s in self.scenarios.values()])
+        return inputs
+
+    @functools.cached_property
     def full_timesteps(self):
         full_timesteps = torch.cat([s.full_timesteps for s in self.scenarios.values()])
         return full_timesteps
@@ -205,6 +242,11 @@ class ScenarioDataset(nn.Module):
     def full_concentrations(self):
         full_concentrations = torch.cat([s.full_concentrations for s in self.scenarios.values()])
         return full_concentrations
+
+    @functools.cached_property
+    def full_inputs(self):
+        full_inputs = torch.cat([s.full_inputs for s in self.scenarios.values()])
+        return full_inputs
 
     def __len__(self):
         return len(self.scenarios)
@@ -297,12 +339,30 @@ class Scenario(nn.Module):
         return self._compute_fair_concentrations()
 
     @functools.cached_property
+    def full_inputs(self):
+        logCO2 = torch.log(self.full_concentrations[:, 0, None].clip(min=torch.finfo(torch.float32).eps) / 278.)
+        sqrtCO2 = torch.sqrt(self.full_concentrations[:, 0, None].clip(min=torch.finfo(torch.float32).eps))
+        sqrtCH4 = torch.sqrt(self.full_concentrations[:, 1, None].clip(min=torch.finfo(torch.float32).eps))
+        aerosols = self.full_emissions[:, -2:]
+        full_inputs = torch.cat([logCO2, sqrtCO2, sqrtCH4, aerosols], dim=-1)
+        return full_inputs
+
+    @functools.cached_property
     def cum_emissions(self):
         return self.full_cum_emissions[-len(self):]
 
     @functools.cached_property
     def concentrations(self):
         return self.trim_hist(self.full_concentrations)
+
+    @functools.cached_property
+    def inputs(self):
+        logCO2 = torch.log(self.concentrations[:, 0, None].clip(min=torch.finfo(torch.float32).eps) / 278.)
+        sqrtCO2 = torch.sqrt(self.concentrations[:, 0, None].clip(min=torch.finfo(torch.float32).eps))
+        sqrtCH4 = torch.sqrt(self.concentrations[:, 1, None].clip(min=torch.finfo(torch.float32).eps))
+        aerosols = self.emissions[:, -2:]
+        inputs = torch.cat([logCO2, sqrtCO2, sqrtCH4, aerosols], dim=-1)
+        return inputs
 
     def __len__(self):
         return len(self.timesteps)
