@@ -77,6 +77,10 @@ class ScenarioDataset(nn.Module):
         except AttributeError:
             pass
         try:
+            del self.cum_emissions
+        except AttributeError:
+            pass
+        try:
             del self.full_timesteps
         except AttributeError:
             pass
@@ -86,6 +90,10 @@ class ScenarioDataset(nn.Module):
             pass
         try:
             del self.full_tas
+        except AttributeError:
+            pass
+        try:
+            del self.full_cum_emissions
         except AttributeError:
             pass
         try:
@@ -141,6 +149,11 @@ class ScenarioDataset(nn.Module):
         return tas
 
     @functools.cached_property
+    def cum_emissions(self):
+        cum_emissions = torch.cat([s.cum_emissions for s in self.scenarios.values()])
+        return cum_emissions
+
+    @functools.cached_property
     def full_timesteps(self):
         full_timesteps = torch.cat([s.full_timesteps for s in self.scenarios.values()])
         return full_timesteps
@@ -154,6 +167,11 @@ class ScenarioDataset(nn.Module):
     def full_tas(self):
         full_tas = torch.cat([s.full_tas for s in self.scenarios.values()])
         return full_tas
+
+    @functools.cached_property
+    def full_cum_emissions(self):
+        full_cum_emissions = torch.cat([s.full_cum_emissions for s in self.scenarios.values()])
+        return full_cum_emissions
 
     def __len__(self):
         return len(self.scenarios)
@@ -229,6 +247,14 @@ class Scenario(nn.Module):
         else:
             full_tas = self.tas
         return full_tas
+
+    @functools.cached_property
+    def full_cum_emissions(self):
+        return torch.cumsum(self.full_emissions, dim=0)
+
+    @functools.cached_property
+    def cum_emissions(self):
+        return self.full_cum_emissions[-len(self):]
 
     def __len__(self):
         return len(self.timesteps)

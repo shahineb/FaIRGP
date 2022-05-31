@@ -91,13 +91,14 @@ def make_train_test_data(cfg, train_keys, test_keys):
 
 def predict(model, test_data):
     model.eval()
+    X_test = torch.cat([test_data.scenarios.cum_emissions[:, 0, None], test_data.scenarios.emissions[:, 1:]], dim=-1)
+    X_test = (X_test - model.mu) / model.sigma
     with torch.no_grad():
-        X_test = (test_data.scenarios.emissions - model.mu) / model.sigma
         test_posterior = model(X_test)
         noisy_test_posterior = model.likelihood(test_posterior)
-    # mean = model.sigma_targets * noisy_test_posterior.mean + model.mu_targets
-    # covar = model.sigma_targets.pow(2) * noisy_test_posterior.covariance_matrix
-    # noisy_test_posterior = distributions.MultivariateNormal(mean=mean, covariance_matrix=covar)
+    mean = model.sigma_targets * noisy_test_posterior.mean + model.mu_targets
+    covar = model.sigma_targets.pow(2) * noisy_test_posterior.covariance_matrix
+    noisy_test_posterior = distributions.MultivariateNormal(mean=mean, covariance_matrix=covar)
     return noisy_test_posterior
 
 

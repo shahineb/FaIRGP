@@ -55,16 +55,17 @@ def make_model(cfg, data):
     likelihood = likelihoods.GaussianLikelihood()
 
     # Instantiate GP
-    X = (data.scenarios.emissions - data.scenarios.mu) / data.scenarios.sigma
-    # y = (data.scenarios.tas - data.scenarios.mu_tas) / data.scenarios.sigma_tas
-    y = data.scenarios.tas
+    X = torch.cat([data.scenarios.cum_emissions[:, 0, None], data.scenarios.emissions[:, 1:]], dim=-1)
+    mu, sigma = X.mean(dim=0), X.std(dim=0)
+    X = (X - mu) / sigma
+    y = (data.scenarios.tas - data.scenarios.mu_tas) / data.scenarios.sigma_tas
     model = ExactGP(X=X,
                     y=y,
                     mean=mean,
                     kernel=kernel,
                     likelihood=likelihood,
-                    mu=data.scenarios.mu,
-                    sigma=data.scenarios.sigma,
+                    mu=mu,
+                    sigma=sigma,
                     mu_targets=data.scenarios.mu_tas,
                     sigma_targets=data.scenarios.sigma_tas)
     return model
