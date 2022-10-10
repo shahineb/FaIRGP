@@ -340,10 +340,10 @@ class Scenario(nn.Module):
 
     @functools.cached_property
     def full_inputs(self):
-        logCO2 = torch.log(self.full_concentrations[:, 0, None].clip(min=torch.finfo(torch.float32).eps) / 278.)
-        sqrtCO2 = torch.sqrt(self.full_concentrations[:, 0, None].clip(min=torch.finfo(torch.float32).eps))
-        sqrtCH4 = torch.sqrt(self.full_concentrations[:, 1, None].clip(min=torch.finfo(torch.float32).eps))
-        aerosols = self.full_emissions[:, -2:]
+        logCO2 = torch.log(self.full_concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps) / 278.)
+        sqrtCO2 = torch.sqrt(self.full_concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps))
+        sqrtCH4 = torch.sqrt(self.full_concentrations[..., 1, None].clip(min=torch.finfo(torch.float32).eps))
+        aerosols = self.full_emissions[..., -2:]
         full_inputs = torch.cat([logCO2, sqrtCO2, sqrtCH4, aerosols], dim=-1)
         return full_inputs
 
@@ -357,10 +357,10 @@ class Scenario(nn.Module):
 
     @functools.cached_property
     def inputs(self):
-        logCO2 = torch.log(self.concentrations[:, 0, None].clip(min=torch.finfo(torch.float32).eps) / 278.)
-        sqrtCO2 = torch.sqrt(self.concentrations[:, 0, None].clip(min=torch.finfo(torch.float32).eps))
-        sqrtCH4 = torch.sqrt(self.concentrations[:, 1, None].clip(min=torch.finfo(torch.float32).eps))
-        aerosols = self.emissions[:, -2:]
+        logCO2 = torch.log(self.concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps) / 278.)
+        sqrtCO2 = torch.sqrt(self.concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps))
+        sqrtCH4 = torch.sqrt(self.concentrations[..., 1, None].clip(min=torch.finfo(torch.float32).eps))
+        aerosols = self.emissions[..., -2:]
         inputs = torch.cat([logCO2, sqrtCO2, sqrtCH4, aerosols], dim=-1)
         return inputs
 
