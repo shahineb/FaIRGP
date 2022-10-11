@@ -258,18 +258,27 @@ class Scenario(nn.Module):
 
     Args:
         timesteps (torch.Tensor): (n_timesteps,) tensor of dates of each time step as floats
-        emissions (torch.Tensor): (n_timesteps, n_agents) tensor of emissions
-        tas (torch.Tensor): (n_timesteps,) tensor of surface temperature anomaly
+        emissions (torch.Tensor): (n_timesteps, n_agents) or (n_timesteps, n_lat, n_lon, n_agents) tensor of emissions
+        tas (torch.Tensor): (n_timesteps,) or (n_timesteps, n_lat, nlon) tensor of surface temperature anomaly
         name (str): name of time serie
-        hist_scenario (Scenario): since pre-industrial scenario, needed to complete SSPs timeseries
+        hist_scenario (Scenario): historical scenario needed to complete SSPs timeseries is this is a SSP scenario]
+
     """
-    def __init__(self, timesteps, emissions, tas, name=None, hist_scenario=None):
+    def __init__(self, timesteps, emissions, tas, lon=None, lat=None, glob_emissions=None, glob_tas=None, name=None, hist_scenario=None):
         super().__init__()
         self.name = name
         self.register_buffer('timesteps', timesteps)
         self.register_buffer('emissions', emissions)
         self.register_buffer('tas', tas)
+        self._register_buffer('glob_emissions', glob_emissions)
+        self._register_buffer('glob_tas', glob_tas)
+        self._register_buffer('lat', lat)
+        self._register_buffer('lon', lon)
         self.hist_scenario = hist_scenario if hist_scenario else []
+
+    def _register_buffer(self, name, tensor):
+        if tensor is not None:
+            self.register_buffer(name, tensor)
 
     def trim_hist(self, full_timeserie):
         """Takes in time serie of size (n_hist_timesteps + n_timesteps, -1) and truncates
@@ -285,8 +294,12 @@ class Scenario(nn.Module):
         return full_timeserie[-len(self):]
 
     def _compute_fair_concentrations(self):
+        if self.full_emissions.ndim == 2:
+            emissions = self.full_emissions
+        else:
+            emissions = self.full_glob_emissions
         res = fair.run(time=self.full_timesteps.numpy(),
-                       emission=self.full_emissions.T.numpy(),
+                       emission=emissions.T.numpy(),
                        base_kwargs=fair.get_params())
         full_concentrations = torch.from_numpy(res['C'].T).float()
         return full_concentrations
@@ -305,6 +318,14 @@ class Scenario(nn.Module):
     @property
     def hist_tas(self):
         return self.hist_scenario.tas
+
+    @property
+    def glob_hist_emissions(self):
+        return self.hist_scenario.glob_emissions
+
+    @property
+    def glob_hist_tas(self):
+        return self.hist_scenario.glob_tas
 
     @functools.cached_property
     def full_timesteps(self):
@@ -331,8 +352,28 @@ class Scenario(nn.Module):
         return full_tas
 
     @functools.cached_property
+    def full_glob_emissions(self):
+        if self.hist_scenario:
+            full_glob_emissions = torch.cat([self.glob_hist_emissions, self.glob_emissions])
+        else:
+            full_glob_emissions = self.glob_emissions
+        return full_glob_emissions
+
+    @functools.cached_property
+    def full_glob_tas(self):
+        if self.hist_scenario:
+            full_glob_tas = torch.cat([self.glob_hist_tas, self.glob_tas])
+        else:
+            full_glob_tas = self.glob_tas
+        return full_glob_tas
+
+    @functools.cached_property
     def full_cum_emissions(self):
         return torch.cumsum(self.full_emissions, dim=0)
+
+    @functools.cached_property
+    def full_glob_cum_emissions(self):
+        return torch.cumsum(self.full_glob_emissions, dim=0)
 
     @functools.cached_property
     def full_concentrations(self):
@@ -340,11 +381,18 @@ class Scenario(nn.Module):
 
     @functools.cached_property
     def full_inputs(self):
-        logCO2 = torch.log(self.full_concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps) / 278.)
-        sqrtCO2 = torch.sqrt(self.full_concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps))
-        sqrtCH4 = torch.sqrt(self.full_concentrations[..., 1, None].clip(min=torch.finfo(torch.float32).eps))
-        aerosols = self.full_emissions[..., -2:]
-        full_inputs = torch.cat([logCO2, sqrtCO2, sqrtCH4, aerosols], dim=-1)
+        # logCO2 = torch.log(self.full_concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps) / 278.)
+        # sqrtCO2 = torch.sqrt(self.full_concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps))
+        # sqrtCH4 = torch.sqrt(self.full_concentrations[..., 1, None].clip(min=torch.finfo(torch.float32).eps))
+        if self.emissions.ndim == 2:
+            full_inputs = torch.cat([self.full_timesteps.unsqueeze(-1),
+                                     self.full_cum_emissions[..., 0, None],
+                                     self.full_emissions[..., 1:]], dim=-1)
+        else:
+            full_time_lat_lon = torch.stack(torch.meshgrid(self.full_timesteps, self.lat, self.lon), dim=-1)
+            full_inputs = torch.cat([full_time_lat_lon,
+                                     self.full_cum_emissions[..., 0, None],
+                                     self.full_emissions[..., 1:]], dim=-1)
         return full_inputs
 
     @functools.cached_property
@@ -357,15 +405,26 @@ class Scenario(nn.Module):
 
     @functools.cached_property
     def inputs(self):
-        logCO2 = torch.log(self.concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps) / 278.)
-        sqrtCO2 = torch.sqrt(self.concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps))
-        sqrtCH4 = torch.sqrt(self.concentrations[..., 1, None].clip(min=torch.finfo(torch.float32).eps))
-        aerosols = self.emissions[..., -2:]
-        inputs = torch.cat([logCO2, sqrtCO2, sqrtCH4, aerosols], dim=-1)
+        # logCO2 = torch.log(self.concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps) / 278.)
+        # sqrtCO2 = torch.sqrt(self.concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps))
+        # sqrtCH4 = torch.sqrt(self.concentrations[..., 1, None].clip(min=torch.finfo(torch.float32).eps))
+        if self.emissions.ndim == 2:
+            inputs = torch.cat([self.timesteps.unsqueeze(-1),
+                                self.cum_emissions[..., 0, None],
+                                self.emissions[..., 1:]], dim=-1)
+        else:
+            time_lat_lon = torch.stack(torch.meshgrid(self.timesteps, self.lat, self.lon), dim=-1)
+            inputs = torch.cat([time_lat_lon,
+                                self.cum_emissions[..., 0, None],
+                                self.emissions[..., 1:]], dim=-1)
         return inputs
 
     def __len__(self):
         return len(self.timesteps)
 
     def __repr__(self):
-        return f"Scenario({self.name})"
+        try:
+            output = f"Scenario({self.name}, time={len(self.timesteps)}, lat={len(self.lat)}, lon={len(self.lon)})"
+        except AttributeError:
+            output = f"Scenario({self.name})"
+        return output

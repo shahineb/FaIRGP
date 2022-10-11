@@ -26,15 +26,17 @@ def make_input_array(xr_input, xr_output):
 
 
 def extract_arrays(xr_input):
-    # Extract time steps array
+    # Extract time steps, lat and lon arrays
     time = xr_input.time.values
+    lat = xr_input.latitude.values
+    lon = xr_input.longitude.values
 
     # Extract cumulative emissions
     cum_CO2_emissions = xr_input.CO2.values
     # cum_emissions = cum_CO2_emissions[:, :10, :10]
     cum_emissions = cum_CO2_emissions
 
-    # Compute emissions
+    # Compute spatial emissions
     CO2_emissions = np.append(np.diff(cum_CO2_emissions, axis=0)[0][None, ...],
                               np.diff(cum_CO2_emissions, axis=0), axis=0)
     CH4_emissions = xr_input.CH4.values
@@ -43,19 +45,35 @@ def extract_arrays(xr_input):
     emissions = np.stack([CO2_emissions, CH4_emissions, SO2_emissions, BC_emissions])
     # emissions = np.stack([CO2_emissions, CH4_emissions, SO2_emissions, BC_emissions])[:, :, :10, :10]
 
-    # Compute temperature anomaly
+    # Compute global emissions
+    weights = np.cos(np.deg2rad(xr_input.latitude))
+    glob_CO2_emissions = xr_input.CO2.weighted(weights).mean(['latitude', 'longitude']).data
+    glob_CH4_emissions = xr_input.CH4.weighted(weights).mean(['latitude', 'longitude']).data
+    glob_SO2_emissions = xr_input.SO2.weighted(weights).mean(['latitude', 'longitude']).data
+    glob_BC_emissions = xr_input.BC.weighted(weights).mean(['latitude', 'longitude']).data
+    glob_emissions = np.stack([glob_CO2_emissions, glob_CH4_emissions, glob_SO2_emissions, glob_BC_emissions])
+
+    # Compute spatial temperature anomaly
     tas = xr_input.tas.data
     # tas = xr_input.tas.data[:, :10, :10]
-    return time, cum_emissions, emissions, tas
+
+    # Compute global temperature anomaly
+    weights = np.cos(np.deg2rad(xr_input.lat))
+    glob_tas = xr_input.tas.weighted(weights).mean(['lat', 'lon']).data
+    return time, lat, lon, cum_emissions, emissions, glob_emissions, tas, glob_tas
 
 
 def make_scenario(inputs, outputs, name, hist_scenario=None):
     xr_input = make_input_array(inputs[name], outputs[name])
-    time, _, emission, tas = extract_arrays(xr_input)
+    time, lat, lon, _, emission, glob_emissions, tas, glob_tas = extract_arrays(xr_input)
     scenario = Scenario(name=name,
                         timesteps=torch.from_numpy(time).float(),
+                        lat=torch.from_numpy(lat).float(),
+                        lon=torch.from_numpy(lon).float(),
                         emissions=torch.from_numpy(emission).float().permute(1, 2, 3, 0),
                         tas=torch.from_numpy(tas).float(),
+                        glob_emissions=torch.from_numpy(glob_emissions).float().T,
+                        glob_tas=torch.from_numpy(glob_tas).float(),
                         hist_scenario=hist_scenario)
     return scenario
 
