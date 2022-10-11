@@ -20,30 +20,30 @@ class RFFPredictionStrategy(object):
         self.likelihood = likelihood
 
     @property
-    @cached(name="covar_cache")
+    @cached(name="ZTZ")
     def ZTZ(self):
         ZTZ = self.train_rffs.t() @ self.train_rffs
         return ZTZ
 
     @property
-    @cached(name="covar_cache")
-    def ZTZ_σ2_inv(self):
+    @cached(name="ZTZ_σ2_inv_ZT")
+    def ZTZ_σ2_inv_ZT(self):
         ZTZ_σ2 = torch.clone(self.ZTZ)
         ZTZ_σ2.view(-1)[::self.ZTZ.size(0) + 1].add_(self.likelihood.noise)
-        ZTZ_σ2_inv = torch.cholesky_inverse(ZTZ_σ2)
-        return ZTZ_σ2_inv
+        L = torch.linalg.cholesky(ZTZ_σ2)
+        ZTZ_σ2_inv_ZT = torch.cholesky_solve(self.train_rffs.t(), L)
+        return ZTZ_σ2_inv_ZT
 
     @property
     @cached(name="covar_cache")
     def covar_cache(self):
-        covar_cache = self.ZTZ_σ2_inv @ self.ZTZ
+        covar_cache = self.ZTZ_σ2_inv_ZT @ self.train_rffs
         return covar_cache
 
     @property
     @cached(name="mean_cache")
     def mean_cache(self):
-        ZTy = self.train_rffs.t() @ self.train_targets
-        mean_cache = self.ZTZ_σ2_inv @ ZTy
+        mean_cache = self.ZTZ_σ2_inv_ZT @ self.train_targets
         return mean_cache
 
     @property
@@ -53,6 +53,18 @@ class RFFPredictionStrategy(object):
     @property
     def train_shape(self):
         return self._train_shape
+
+    def rff_prediction(self, test_rffs):
+        # Find the components of the distribution that contain test data
+        test_mean = torch.zeros(test_rffs.size(0))
+
+        # For efficiency - we can make things more efficient
+        test_test_covar = test_rffs @ test_rffs.t()
+
+        return (
+            self.rff_predictive_mean(test_mean, test_rffs),
+            self.rff_predictive_covar(test_test_covar, test_rffs),
+        )
 
     def rff_predictive_mean(self, test_mean, test_rffs):
         res = test_rffs @ self.mean_cache
