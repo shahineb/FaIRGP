@@ -264,14 +264,12 @@ class Scenario(nn.Module):
         hist_scenario (Scenario): historical scenario needed to complete SSPs timeseries is this is a SSP scenario]
 
     """
-    def __init__(self, timesteps, emissions, tas, lon=None, lat=None, glob_emissions=None, glob_tas=None, name=None, hist_scenario=None):
+    def __init__(self, timesteps, emissions, tas, lon=None, lat=None, name=None, hist_scenario=None):
         super().__init__()
         self.name = name
         self.register_buffer('timesteps', timesteps)
         self.register_buffer('emissions', emissions)
         self.register_buffer('tas', tas)
-        self._register_buffer('glob_emissions', glob_emissions)
-        self._register_buffer('glob_tas', glob_tas)
         self._register_buffer('lat', lat)
         self._register_buffer('lon', lon)
         self.hist_scenario = hist_scenario if hist_scenario else []
@@ -326,6 +324,22 @@ class Scenario(nn.Module):
     @property
     def glob_hist_tas(self):
         return self.hist_scenario.glob_tas
+
+    @functools.cached_property
+    def weights(self):
+        return torch.cos(torch.deg2rad(self.lat))
+
+    @functools.cached_property
+    def glob_emissions(self):
+        weighted_emissions = self.emissions.mul(self.weights.view(1, -1, 1, 1))
+        glob_emissions = weighted_emissions.sum(dim=(1, 2)).div(self.weights.sum() * len(self.lon))
+        return glob_emissions
+
+    @functools.cached_property
+    def glob_tas(self):
+        weighted_tas = self.tas.mul(self.weights.view(1, -1, 1))
+        glob_tas = weighted_tas.sum(dim=(1, 2)).div(self.weights.sum() * len(self.lon))
+        return glob_tas
 
     @functools.cached_property
     def full_timesteps(self):
