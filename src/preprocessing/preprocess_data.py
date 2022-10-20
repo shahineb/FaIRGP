@@ -26,7 +26,7 @@ def get_fair_params():
 
 
 def load_emissions_dataset(filepath):
-    inputs = xr.open_dataset(filepath).compute()
+    inputs = xr.open_dataset(filepath).compute().isel(latitude=slice(0, 40), longitude=slice(0, 40))
     inputs.CO2.data = inputs.CO2.data / GtC_to_GtCO2
     inputs.CO2.attrs['units'] = 'GtC'
     inputs.CH4.data = inputs.CH4.data * Gt_to_Mt
@@ -39,7 +39,7 @@ def load_emissions_dataset(filepath):
 
 
 def load_response_dataset(filepath):
-    outputs = xr.open_dataset(filepath).compute()
+    outputs = xr.open_dataset(filepath).compute().isel(lat=slice(0, 40), lon=slice(0, 40))
     return outputs
 
 
