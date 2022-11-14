@@ -22,6 +22,7 @@ class FaIR(nn.Module):
                  f1,
                  f2,
                  f3,
+                 forcing_pattern,
                  **kwargs):
         super().__init__()
         self.a1 = nn.Parameter(torch.from_numpy(a1))
@@ -47,6 +48,7 @@ class FaIR(nn.Module):
         self.f3 = nn.Parameter(torch.from_numpy(f3).float())
         self.f = torch.stack([self.f1, self.f2, self.f3], dim=0)
 
+        self.register_buffer('forcing_pattern', torch.from_numpy(forcing_pattern).float())
         self.register_buffer('PI_conc', torch.from_numpy(PI_conc).float())
         self.register_buffer('emis2conc', torch.from_numpy(emis2conc).float())
 
@@ -85,7 +87,7 @@ class FaIR(nn.Module):
 
     def step_temperature(self, S_old, F, q, d, dt=1):
         decay_factor = torch.exp(-dt / d)  # (n_boxes, n_lat, n_lon)
-        S_new = q * (1 - decay_factor) * F + S_old * decay_factor
+        S_new = q * (1 - decay_factor) * F.unsqueeze(0) + S_old * decay_factor
         T = torch.sum((S_old + S_new) / 2, dim=0)
         return S_new, T
 
@@ -120,7 +122,8 @@ class FaIR(nn.Module):
                                                 R_old=R,
                                                 G_A_old=G_A)
             RF = self.step_forcing(C=C)
-            S, T = self.step_temperature(S_old=S_old, F=RF.sum(), q=q, d=d, dt=dt)
+            F = self.forcing_pattern * RF.sum()
+            S, T = self.step_temperature(S_old=S_old, F=F, q=q, d=d, dt=dt)
             G += inp_ar[:, i]
 
             alpha_ts.append(alpha)

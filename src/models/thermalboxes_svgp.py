@@ -2,37 +2,36 @@ import torch
 import gpytorch
 from gpytorch import settings, distributions
 from .svgp import SVGP
-from .utils import compute_means, compute_I, compute_covariance
+from .utils_svgp import compute_means, compute_I, compute_covariance
 
 
 class ThermalBoxesSVGP(SVGP):
-    def __init__(self, scenario_dataset, inducing_points, kernel, likelihood, d_fn, q_fn):
+    def __init__(self, scenario_dataset, inducing_points, kernel, likelihood, FaIR_model, d_fn, q_fn):
         super().__init__(inducing_points=inducing_points,
                          kernel=kernel,
                          likelihood=likelihood)
         # Register input data
         self.train_scenarios = scenario_dataset
 
+        # Register FaIR module
+        self.FaIR_model = FaIR_model
+
         # Register d and q functions
         self.d_fn = d_fn
         self.q_fn = q_fn
 
-    def _compute_d(self, scenario_dataset):
-        lat = scenario_dataset.lat
-        ocean_mask = scenario_dataset.ocean_mask
-        d = self.d_fun(lat=lat, ocean_mask=ocean_mask)
+    def _compute_d(self, *args, **kwargs):
+        d = self.d_fun(*args, **kwargs)
         return d
 
-    def _compute_q(self, scenario_dataset):
-        lat = scenario_dataset.lat
-        ocean_mask = scenario_dataset.ocean_mask
-        q = self.q_fun(lat=lat, ocean_mask=ocean_mask)
+    def _compute_q(self, *args, **kwargs):
+        q = self.q_fun(*args, **kwargs)
         return q
 
     def _compute_mean(self, scenario_dataset):
-        d = self._compute_d(scenario_dataset)
-        q = self._compute_q(scenario_dataset)
-        mean = self.compute_mean(scenario_dataset, d, q)
+        d = self._compute_d()
+        q = self._compute_q()
+        mean = compute_means(scenario_dataset, self.FaIR_model, d, q)
         return mean
 
     def _compute_covariance(self, scenario_dataset):

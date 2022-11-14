@@ -1,3 +1,3 @@
-from .scenario import Scenario, ScenarioDataset
+from .scenario import Scenario, ScenarioDataset, GridInducingScenario
 
-__all__ = ['Scenario', 'ScenarioDataset']
+__all__ = ['Scenario', 'ScenarioDataset', 'GridInducingScenario']

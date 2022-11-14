@@ -95,7 +95,8 @@ class ThermalBoxesGP(GP):
             test_shape = torch.Size([joint_shape[0] - self.prediction_strategy.train_shape[0]])
 
             # Make the prediction
-            predictive_mean, predictive_covar = self.prediction_strategy.exact_prediction(full_mean, full_covar)
+            with settings._use_eval_tolerance():
+                predictive_mean, predictive_covar = self.prediction_strategy.exact_prediction(full_mean, full_covar)
 
             # Reshape predictive mean to match the appropriate event shape
             predictive_mean = predictive_mean.view(*batch_shape, *test_shape).contiguous()
