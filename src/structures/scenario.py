@@ -516,7 +516,7 @@ class GridInducingScenario(Scenario):
         self.n_inducing_points = n_inducing_times * n_inducing_lats * n_inducing_lons
 
     def trim_noninducing_times(self, timeserie):
-        return timeserie[::len(self.timesteps) // self.n_inducing_times + 1]
+        return timeserie[::len(self.full_timesteps) // self.n_inducing_times + 1]
 
     def __repr__(self):
         try:
