@@ -500,16 +500,21 @@ class GridInducingScenario(Scenario):
                          lat=base_scenario.lat,
                          name=base_scenario.name,
                          hist_scenario=base_scenario.hist_scenario)
-        inducing_times = base_scenario.timesteps[::len(self.timesteps) // n_inducing_times + 1]
-        inducing_lats = base_scenario.lat[::d_map.size(1) // n_inducing_lats + 1]
-        inducing_lons = base_scenario.lon[::d_map.size(2) // n_inducing_lats + 1]
-        inducing_d_map = d_map[:, ::d_map.size(1) // n_inducing_lats + 1, ::d_map.size(2) // n_inducing_lons + 1]
-        inducing_q_map = q_map[:, ::q_map.size(1) // n_inducing_lats + 1, ::q_map.size(2) // n_inducing_lons + 1]
+        idx_inducing_times, inducing_times = self._init_regularly_spaced_point(self.full_timesteps, n_inducing_times)
+        idx_inducing_lats, inducing_lats = self._init_regularly_spaced_point(self.lat, n_inducing_lats)
+        idx_inducing_lons, inducing_lons = self._init_regularly_spaced_point(self.lon, n_inducing_lons)
+        self.register_buffer('idx_inducing_times', idx_inducing_times)
+        self.register_buffer('idx_inducing_lats', idx_inducing_lats)
+        self.register_buffer('idx_inducing_lons', idx_inducing_lons)
         self.register_buffer('inducing_times', inducing_times)
         self.register_buffer('inducing_lats', inducing_lats)
         self.register_buffer('inducing_lons', inducing_lons)
+
+        inducing_d_map = d_map[:, self.idx_inducing_lats][..., self.idx_inducing_lons]
+        inducing_q_map = q_map[:, self.idx_inducing_lats][..., self.idx_inducing_lons]
         self.register_buffer('d_map', inducing_d_map)
         self.register_buffer('q_map', inducing_q_map)
+
         self.n_inducing_times = n_inducing_times
         self.n_inducing_lats = n_inducing_lats
         self.n_inducing_lons = n_inducing_lons
@@ -517,6 +522,13 @@ class GridInducingScenario(Scenario):
 
     def trim_noninducing_times(self, timeserie):
         return timeserie[::len(self.full_timesteps) // self.n_inducing_times + 1]
+
+    def _init_regularly_spaced_point(self, array, n_points):
+        n = len(array)
+        step = n // n_points
+        step = (n - step) // n_points
+        idx = torch.round(torch.linspace(step, n - step - 1, n_points)).long()
+        return idx, array[idx]
 
     def __repr__(self):
         try:

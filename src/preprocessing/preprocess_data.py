@@ -26,8 +26,10 @@ def get_fair_params():
 
 
 def load_emissions_dataset(filepath):
-    inputs = xr.open_dataset(filepath).compute()
-    # inputs = xr.open_dataset(filepath).compute().isel(latitude=slice(0, 96), longitude=slice(0, 60))
+    # inputs = xr.open_dataset(filepath).compute()
+    # inputs = xr.open_dataset(filepath).compute().isel(time=slice(0, None), latitude=slice(50, 55), longitude=slice(110, 115))
+    # inputs = xr.open_dataset(filepath).compute().isel(time=slice(0, None), latitude=slice(35, 55), longitude=slice(110, 130))
+    inputs = xr.open_dataset(filepath).compute().isel(time=slice(0, None), latitude=slice(0, None), longitude=slice(110, 130))
     inputs.CO2.data = inputs.CO2.data / GtC_to_GtCO2
     inputs.CO2.attrs['units'] = 'GtC'
     inputs.CH4.data = inputs.CH4.data * Gt_to_Mt
@@ -40,8 +42,9 @@ def load_emissions_dataset(filepath):
 
 
 def load_response_dataset(filepath):
-    outputs = xr.open_dataset(filepath).compute()
-    # outputs = xr.open_dataset(filepath).compute().isel(lat=slice(0, 96), lon=slice(0, 60))
+    # outputs = xr.open_dataset(filepath).compute()
+    outputs = xr.open_dataset(filepath).compute().isel(time=slice(0, None), lat=slice(0, None), lon=slice(110, 130))
+    # outputs = xr.open_dataset(filepath).compute().isel(time=slice(0, None), lat=slice(50, 55), lon=slice(110, 115))
     return outputs
 
 

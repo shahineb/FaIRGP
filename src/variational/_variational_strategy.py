@@ -1,7 +1,7 @@
 from abc import ABC, abstractproperty
 import torch
 import torch.nn as nn
-from gpytorch import settings
+from linear_operator import settings
 from gpytorch.utils.memoize import cached, clear_cache_hook
 
 
@@ -15,7 +15,7 @@ class _ScenarioVariationalStrategy(nn.Module, ABC):
         super().__init__()
 
         if jitter_val is None:
-            self.jitter_val = settings.variational_cholesky_jitter.value(inducing_scenario.inputs.dtype)
+            self.jitter_val = settings.cholesky_jitter.value(inducing_scenario.inputs.dtype)
         else:
             self.jitter_val = jitter_val
 
@@ -79,7 +79,7 @@ class _ScenarioVariationalStrategy(nn.Module, ABC):
             kl_divergence = torch.distributions.kl.kl_divergence(self.variational_distribution, self.prior_distribution)
         return kl_divergence
 
-    def __call__(self, **kwargs):
+    def __call__(self, Kww, Kwx, Kxx, **kwargs):
         # Delete previously cached items from the training distribution
         if self.training:
             self._clear_cache()
@@ -94,6 +94,7 @@ class _ScenarioVariationalStrategy(nn.Module, ABC):
 
         # Get q(f)
         return super().__call__(
+            Kww=Kww, Kwx=Kwx, Kxx=Kxx,
             inducing_values=variational_dist_u.mean,
             variational_inducing_covar=variational_dist_u.lazy_covariance_matrix,
             **kwargs,

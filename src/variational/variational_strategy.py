@@ -1,15 +1,14 @@
 import torch
 from linear_operator import to_dense
 from linear_operator.operators import (
-    CholLinearOperator,
     DiagLinearOperator,
     MatmulLinearOperator,
     RootLinearOperator,
     SumLinearOperator,
     TriangularLinearOperator,
 )
+from linear_operator import to_linear_operator
 from linear_operator.utils.cholesky import psd_safe_cholesky
-from gpytorch.lazy import lazify
 from gpytorch.distributions import MultivariateNormal
 from gpytorch.settings import _linalg_dtype_cholesky, trace_mode
 from gpytorch.utils.errors import CachingError
@@ -24,7 +23,7 @@ class ScenarioVariationalStrategy(_ScenarioVariationalStrategy):
     """
     def __init__(self, model, inducing_scenario, variational_distribution, jitter_val=None):
         super().__init__(model, inducing_scenario, variational_distribution, jitter_val=jitter_val)
-        self.register_buffer("updated_strategy", torch.tensor(False))
+        self.register_buffer("updated_strategy", torch.tensor(True))
 
     @cached(name="cholesky_factor", ignore_args=True)
     def _cholesky_factor(self, induc_induc_covar):
@@ -45,11 +44,10 @@ class ScenarioVariationalStrategy(_ScenarioVariationalStrategy):
 
     def forward(self, Kww, Kwx, Kxx, inducing_values, variational_inducing_covar=None, **kwargs):
         # Covariance terms
-        num_induc = self.inducing_scenario.n_inducing_points
-        test_mean = torch.zeros(num_induc).to(self.inducing_scenario.inputs.dtype)
-        induc_induc_covar = lazify(Kww).add_jitter(self.jitter_val)
-        induc_data_covar = lazify(Kwx).to_dense()
-        data_data_covar = lazify(Kxx)
+        test_mean = torch.zeros_like(Kxx[0])
+        induc_induc_covar = to_linear_operator(Kww).add_jitter(self.jitter_val)
+        induc_data_covar = to_linear_operator(Kwx).to_dense()
+        data_data_covar = to_linear_operator(Kxx)
 
         # Compute interpolation terms
         # K_ZZ^{-1/2} K_ZX
@@ -89,9 +87,10 @@ class ScenarioVariationalStrategy(_ScenarioVariationalStrategy):
         # Return the distribution
         return MultivariateNormal(predictive_mean, predictive_covar)
 
-    def __call__(self, Kww, **kwargs):
+    def __call__(self, Kww, Kwx, Kxx, **kwargs):
         if not self.updated_strategy.item():
             with torch.no_grad():
+                print("HERE")
                 # Get unwhitened p(u)
                 prior_function_dist = MultivariateNormal(torch.zeros_like(Kww[0]), Kww)
                 prior_mean = prior_function_dist.loc
@@ -120,4 +119,4 @@ class ScenarioVariationalStrategy(_ScenarioVariationalStrategy):
                 # Mark that we have updated the variational strategy
                 self.updated_strategy.fill_(True)
 
-        return super().__call__(**kwargs)
+        return super().__call__(Kww=Kww, Kwx=Kwx, Kxx=Kxx, **kwargs)
