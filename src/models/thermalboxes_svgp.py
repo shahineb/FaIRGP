@@ -3,7 +3,9 @@ import sys
 import torch
 import gpytorch
 from gpytorch.models import ApproximateGP
-from gpytorch import variational
+from gpytorch import variational, distributions
+from linear_operator.operators import DiagLinearOperator
+from tqdm import tqdm
 from .utils_svgp import compute_mean, compute_means, compute_Kxx, compute_Kwx, compute_Kww, sample_scenario, sample_indices
 
 base_dir = os.path.join(os.getcwd(), '..')
@@ -86,10 +88,24 @@ class ThermalBoxesSVGP(ApproximateGP):
         targets = self.train_targets[name][time_idx][:, lat_idx][:, :, lon_idx]
         return scenario, time_idx, lat_idx, lon_idx, targets
 
-    def __call__(self, scenario, time_idx, lat_idx, lon_idx, **kwargs):
-        Kxx, Kww, Kwx = self._compute_covariance(scenario, time_idx, lat_idx, lon_idx)
-        # return Kxx, Kww, Kwx
-        return self.variational_strategy.__call__(Kww=Kww, Kwx=Kwx, Kxx=Kxx, **kwargs)
+    def __call__(self, scenario, time_idx, lat_idx, lon_idx, batch_size=None, **kwargs):
+        if batch_size:
+            means = []
+            vars = []
+            for time_batch in tqdm(time_idx.split(batch_size[0])):
+                for lat_batch in lat_idx.split(batch_size[1]):
+                    for lon_batch in lon_idx.split(batch_size[2]):
+                        Kxx, Kww, Kwx = self._compute_covariance(scenario, time_idx, lat_idx, lon_idx)
+                        qf = self.variational_strategy.__call__(Kww=Kww, Kwx=Kwx, Kxx=Kxx, **kwargs)
+                        means.append(qf.mean)
+                        vars.append(qf.variance)
+            means = torch.cat(means)
+            vars = DiagLinearOperator(torch.cat(vars))
+            qf = distributions.MultivariateNormal(means, vars)
+        else:
+            Kxx, Kww, Kwx = self._compute_covariance(scenario, time_idx, lat_idx, lon_idx)
+            qf = self.variational_strategy.__call__(Kww=Kww, Kwx=Kwx, Kxx=Kxx, **kwargs)
+        return qf
 
     @property
     def inducing_scenario(self):
