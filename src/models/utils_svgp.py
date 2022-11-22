@@ -27,7 +27,8 @@ def compute_Kxx(scenario,
                 d_map,
                 q_map,
                 mu,
-                sigma):
+                sigma,
+                diag=False):
     I = compute_I_scenario(scenario1=scenario,
                            scenario2=scenario,
                            time_idx1=time_idx,
@@ -40,20 +41,30 @@ def compute_Kxx(scenario,
                            d_map=d_map,
                            mu=mu,
                            sigma=sigma)
-    covar = compute_covariance_scenario(scenario1=scenario,
-                                        scenario2=scenario,
-                                        time_idx1=time_idx,
-                                        time_idx2=time_idx,
-                                        lat_idx1=lat_idx,
-                                        lat_idx2=lat_idx,
-                                        lon_idx1=lon_idx,
-                                        lon_idx2=lon_idx,
-                                        I=I,
-                                        d_map=d_map,
-                                        q_map=q_map)
-    n = len(time_idx) * len(lat_idx) * len(lon_idx)
-    covar = covar.permute(0, 4, 5, 1, 2, 3).reshape(n, -1)
-    return covar
+    if diag:
+        covar_diag = compute_covariance_scenario_diag(scenario=scenario,
+                                                      time_idx=time_idx,
+                                                      lat_idx=lat_idx,
+                                                      lon_idx=lon_idx,
+                                                      I=I,
+                                                      q_map=q_map,
+                                                      d_map=d_map)
+        output = covar_diag.flatten()
+    else:
+        covar = compute_covariance_scenario(scenario1=scenario,
+                                            scenario2=scenario,
+                                            time_idx1=time_idx,
+                                            time_idx2=time_idx,
+                                            lat_idx1=lat_idx,
+                                            lat_idx2=lat_idx,
+                                            lon_idx1=lon_idx,
+                                            lon_idx2=lon_idx,
+                                            I=I,
+                                            d_map=d_map,
+                                            q_map=q_map)
+        n = len(time_idx) * len(lat_idx) * len(lon_idx)
+        output = covar.permute(0, 4, 5, 1, 2, 3).reshape(n, -1)
+    return output
 
 
 def compute_Kwx(inducing_scenario,
@@ -160,6 +171,31 @@ def compute_covariance_scenario(scenario1, scenario2,
     return covar
 
 
+def compute_covariance_scenario_diag(scenario,
+                                     time_idx,
+                                     lat_idx,
+                                     lon_idx,
+                                     I,
+                                     q_map,
+                                     d_map):
+    covar_diag = torch.zeros(len(time_idx), len(lat_idx), len(lon_idx))
+    rq_map = q_map[:, lat_idx][..., lon_idx]
+    rd_map = d_map[:, lat_idx][..., lon_idx]
+    q_d_ratio = rq_map.div(rd_map)
+
+    Kj_old = covar_diag.unsqueeze(1).repeat(1, d_map.size(0), 1, 1)
+    i = int(torch.any(time_idx == 0.).item())
+
+    for t in range(1, time_idx.max() + 1):
+        I_new = I[t]
+        Kj_new = step_kernel_diag(Kj_old, I_new, q_d_ratio, rq_map, rd_map)
+        if torch.any(time_idx == t).item():
+            covar_diag[i] = Kj_new.sum(dim=1)[i]
+            i += 1
+        Kj_old = Kj_new
+    return covar_diag
+
+
 def step_I(I_old, K_new, d_map, dt=1):
     decay_factor = torch.exp(-dt / d_map)
     I_new = I_old * decay_factor + d_map * K_new * (1 - decay_factor)
@@ -174,6 +210,14 @@ def step_kernel(Kj_old, I_new, inducing_q_d_ratio, q_map, d_map, dt=1):
     update = update.reshape(Kj_old.size(0), Kj_old.size(1), Kj_old.size(2), Kj_old.size(4), Kj_old.size(3), Kj_old.size(5))
     update = update.permute(0, 1, 2, 4, 3, 5)
     Kj_new = (Kj_old * (1 + decay_factor[:, None, None, :, :]) + update) / 2
+    return Kj_new
+
+
+def step_kernel_diag(Kj_old, I_new, inducing_q_d_ratio, q_map, d_map, dt=1):
+    decay_factor = torch.exp(-dt / d_map)
+    update = [I_new[:, j] * inducing_q_d_ratio[j] * q_map[j] * (1 - decay_factor[j]) for j in range(q_map.size(0))]
+    update = torch.stack(update, dim=1)
+    Kj_new = (Kj_old * (1 + decay_factor) + update) / 2
     return Kj_new
 
 

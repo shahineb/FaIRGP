@@ -42,7 +42,47 @@ class ScenarioVariationalStrategy(_ScenarioVariationalStrategy):
         res = MultivariateNormal(zeros, DiagLinearOperator(ones))
         return res
 
-    def forward(self, Kww, Kwx, Kxx, inducing_values, variational_inducing_covar=None, **kwargs):
+    def forward(self, Kww, Kwx, Kxx, inducing_values, variational_inducing_covar=None, diag=False, **kwargs):
+        if diag:
+            return self.diag_forward(Kww, Kwx, Kxx, inducing_values, variational_inducing_covar, **kwargs)
+        else:
+            return self.full_forward(Kww, Kwx, Kxx, inducing_values, variational_inducing_covar, **kwargs)
+
+    def diag_forward(self, Kww, Kwx, Kxx_diag, inducing_values, variational_inducing_covar, **kwargs):
+        # Covariance terms
+        test_mean = torch.zeros_like(Kxx_diag)
+        induc_induc_covar = to_linear_operator(Kww).add_jitter(self.jitter_val)
+        induc_data_covar = to_linear_operator(Kwx).to_dense()
+        data_data_var = Kxx_diag
+
+        # Compute interpolation terms
+        # K_ZZ^{-1/2} K_ZX
+        # K_ZZ^{-1/2} \mu_Z
+        L = self._cholesky_factor(induc_induc_covar)
+        if L.shape != induc_induc_covar.shape:
+            # Aggressive caching can cause nasty shape incompatibilies when evaluating with different batch shapes
+            # TODO: Use a hook fo this
+            try:
+                pop_from_cache_ignore_args(self, "cholesky_factor")
+            except CachingError:
+                pass
+            L = self._cholesky_factor(induc_induc_covar)
+        interp_term = L.solve(induc_data_covar.type(_linalg_dtype_cholesky.value())).to(test_mean.dtype)
+
+        # Compute the mean of q(f)
+        # k_XZ K_ZZ^{-1/2} (m - K_ZZ^{-1/2} \mu_Z) + \mu_X
+        predictive_mean = (interp_term.transpose(-1, -2) @ inducing_values.unsqueeze(-1)).squeeze(-1) + test_mean
+
+        # Compute the variance of q(f)
+        # K_XX + k_XZ K_ZZ^{-1/2} (S - I) K_ZZ^{-1/2} k_ZX
+        middle_term = self.prior_distribution.lazy_covariance_matrix.mul(-1)
+        middle_term = SumLinearOperator(variational_inducing_covar, middle_term)
+        predictive_var = data_data_var + interp_term.mul(middle_term @ interp_term).sum(dim=0)
+        diag_predictive_covar = DiagLinearOperator(predictive_var)
+        # Return the distribution
+        return MultivariateNormal(predictive_mean, diag_predictive_covar)
+
+    def full_forward(self, Kww, Kwx, Kxx, inducing_values, variational_inducing_covar=None, **kwargs):
         # Covariance terms
         test_mean = torch.zeros_like(Kxx[0])
         induc_induc_covar = to_linear_operator(Kww).add_jitter(self.jitter_val)
@@ -87,10 +127,9 @@ class ScenarioVariationalStrategy(_ScenarioVariationalStrategy):
         # Return the distribution
         return MultivariateNormal(predictive_mean, predictive_covar)
 
-    def __call__(self, Kww, Kwx, Kxx, **kwargs):
+    def __call__(self, Kww, Kwx, Kxx, diag=False, **kwargs):
         if not self.updated_strategy.item():
             with torch.no_grad():
-                print("HERE")
                 # Get unwhitened p(u)
                 prior_function_dist = MultivariateNormal(torch.zeros_like(Kww[0]), Kww)
                 prior_mean = prior_function_dist.loc
@@ -119,4 +158,4 @@ class ScenarioVariationalStrategy(_ScenarioVariationalStrategy):
                 # Mark that we have updated the variational strategy
                 self.updated_strategy.fill_(True)
 
-        return super().__call__(Kww=Kww, Kwx=Kwx, Kxx=Kxx, **kwargs)
+        return super().__call__(Kww=Kww, Kwx=Kwx, Kxx=Kxx, diag=diag, **kwargs)

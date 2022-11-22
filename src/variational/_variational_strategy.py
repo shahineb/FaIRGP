@@ -79,7 +79,7 @@ class _ScenarioVariationalStrategy(nn.Module, ABC):
             kl_divergence = torch.distributions.kl.kl_divergence(self.variational_distribution, self.prior_distribution)
         return kl_divergence
 
-    def __call__(self, Kww, Kwx, Kxx, **kwargs):
+    def __call__(self, Kww, Kwx, Kxx, diag, **kwargs):
         # Delete previously cached items from the training distribution
         if self.training:
             self._clear_cache()
@@ -94,7 +94,7 @@ class _ScenarioVariationalStrategy(nn.Module, ABC):
 
         # Get q(f)
         return super().__call__(
-            Kww=Kww, Kwx=Kwx, Kxx=Kxx,
+            Kww=Kww, Kwx=Kwx, Kxx=Kxx, diag=diag,
             inducing_values=variational_dist_u.mean,
             variational_inducing_covar=variational_dist_u.lazy_covariance_matrix,
             **kwargs,

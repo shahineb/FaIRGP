@@ -52,7 +52,7 @@ class ThermalBoxesSVGP(ApproximateGP):
         means_dict = compute_means(scenario_dataset, self.FaIR_model, self.d_map, self.q_map)
         return means_dict
 
-    def _compute_covariance(self, scenario, time_idx, lat_idx, lon_idx):
+    def _compute_covariance(self, scenario, time_idx, lat_idx, lon_idx, diag=False):
         Kxx = compute_Kxx(scenario=scenario,
                           time_idx=time_idx,
                           lat_idx=lat_idx,
@@ -61,7 +61,8 @@ class ThermalBoxesSVGP(ApproximateGP):
                           d_map=self.d_map,
                           q_map=self.q_map,
                           mu=self.mu,
-                          sigma=self.sigma)
+                          sigma=self.sigma,
+                          diag=diag)
         Kww = compute_Kww(inducing_scenario=self.inducing_scenario,
                           kernel=self.kernel,
                           d_map=self.d_map,
@@ -78,7 +79,8 @@ class ThermalBoxesSVGP(ApproximateGP):
                           q_map=self.q_map,
                           mu=self.mu,
                           sigma=self.sigma)
-        Kxx = gpytorch.add_jitter(Kxx)
+        # if not diag:
+        #     Kxx = gpytorch.add_jitter(Kxx)
         Kww = gpytorch.add_jitter(Kww)
         return Kxx, Kww, Kwx
 
@@ -88,23 +90,9 @@ class ThermalBoxesSVGP(ApproximateGP):
         targets = self.train_targets[name][time_idx][:, lat_idx][:, :, lon_idx]
         return scenario, time_idx, lat_idx, lon_idx, targets
 
-    def __call__(self, scenario, time_idx, lat_idx, lon_idx, batch_size=None, **kwargs):
-        if batch_size:
-            means = []
-            vars = []
-            for time_batch in tqdm(time_idx.split(batch_size[0])):
-                for lat_batch in lat_idx.split(batch_size[1]):
-                    for lon_batch in lon_idx.split(batch_size[2]):
-                        Kxx, Kww, Kwx = self._compute_covariance(scenario, time_idx, lat_idx, lon_idx)
-                        qf = self.variational_strategy.__call__(Kww=Kww, Kwx=Kwx, Kxx=Kxx, **kwargs)
-                        means.append(qf.mean)
-                        vars.append(qf.variance)
-            means = torch.cat(means)
-            vars = DiagLinearOperator(torch.cat(vars))
-            qf = distributions.MultivariateNormal(means, vars)
-        else:
-            Kxx, Kww, Kwx = self._compute_covariance(scenario, time_idx, lat_idx, lon_idx)
-            qf = self.variational_strategy.__call__(Kww=Kww, Kwx=Kwx, Kxx=Kxx, **kwargs)
+    def __call__(self, scenario, time_idx, lat_idx, lon_idx, diag=False, **kwargs):
+        Kxx, Kww, Kwx = self._compute_covariance(scenario, time_idx, lat_idx, lon_idx, diag)
+        qf = self.variational_strategy.__call__(Kww=Kww, Kwx=Kwx, Kxx=Kxx, diag=diag, **kwargs)
         return qf
 
     @property
