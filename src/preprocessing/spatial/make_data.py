@@ -1,21 +1,29 @@
 """
 Nomenclature:
     - `scenarios` : scenario dataset used for training
+    - `inducing_scenario` : scenario used for inducing points
     - `fair_kwargs` : default keyed parameters to use in FaIR runs
+    - `d_map` : spatial maps of djs
+    - `q_map` : spatial maps of qjs
 """
 import os
 import sys
 from collections import namedtuple
+import numpy as np
+import torch
 from .preprocess_data import load_emissions_dataset, load_response_dataset, make_scenario, get_fair_params
 
 base_dir = os.path.join(os.getcwd(), '../..')
 sys.path.append(base_dir)
 
-from src.structures import ScenarioDataset
+from src.structures import ScenarioDataset, GridInducingScenario
 
 
 field_names = ['scenarios',
+               'inducing_scenario',
                'fair_kwargs',
+               'd_map',
+               'q_map',
                'misc']
 Data = namedtuple(typename='Data', field_names=field_names, defaults=(None,) * len(field_names))
 
@@ -62,8 +70,24 @@ def make_data(cfg):
     # Load FaIR NORESM2-LM tuned parameters
     fair_kwargs = get_fair_params()
 
+    # Load d and q maps
+    d_map = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'd_maps.npy'))).double()
+    q_map = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'q_maps.npy'))).double()
+
+    # Create inducing scenario
+    cfg_inducing = cfg['model']['inducing_scenario']
+    inducing_scenario = GridInducingScenario(base_scenario=scenarios[cfg_inducing['key']],
+                                             n_inducing_times=cfg_inducing['n_inducing_times'],
+                                             n_inducing_lats=cfg_inducing['n_inducing_lats'],
+                                             n_inducing_lons=cfg_inducing['n_inducing_lons'],
+                                             d_map=d_map,
+                                             q_map=q_map)
+
     # Encapsulate into named tuple object
     kwargs = {'scenarios': scenarios,
-              'fair_kwargs': fair_kwargs}
+              'inducing_scenario': inducing_scenario,
+              'fair_kwargs': fair_kwargs,
+              'd_map': d_map,
+              'q_map': q_map}
     data = Data(**kwargs)
     return data

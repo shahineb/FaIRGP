@@ -1,0 +1,58 @@
+################################################################################
+#   CONFIGURATIONS FOR FITTING GFAIR PROCESS
+################################################################################
+
+# DATASET
+dataset:
+  # Path to data directory
+  dirpath: data/
+
+  # Keys of scenearios to load
+  keys:
+    - historical
+    # - ssp126
+    # - ssp245
+    # - ssp370
+    # - ssp585
+
+
+
+# MODEL SPECIFICATIONS
+model:
+  # Specification of inducing scenario
+  inducing_scenario:
+    # Name of inducing scenario
+    key: historical
+
+    # Number of inducing times
+    n_inducing_times: 3
+
+    # Number of inducing lats
+    n_inducing_lats: 3
+
+    # Number of inducing lons
+    n_inducing_lons: 3
+
+
+
+# TRAINING
+training:
+  # Number of training epochs
+  n_epochs: 1
+
+  # Learning rate
+  lr: 0.001
+
+  # Number of time steps in a batch
+  batch_size_time: 2
+
+  # Number of latitudes in a batch
+  batch_size_lat: 2
+
+  # Number of longitudes in a batch
+  batch_size_lon: 2
+
+
+
+# EVALUATION
+evaluation:
