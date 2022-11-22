@@ -185,6 +185,14 @@ class ScenarioDataset(nn.Module):
         return self.inputs.std(dim=0).clip(min=torch.finfo(torch.float32).eps)
 
     @functools.cached_property
+    def mu_glob_inputs(self):
+        return self.glob_inputs.mean(dim=0)
+
+    @functools.cached_property
+    def sigma_glob_inputs(self):
+        return self.glob_inputs.std(dim=0).clip(min=torch.finfo(torch.float32).eps)
+
+    @functools.cached_property
     def names(self):
         return list(self.scenarios.keys())
 
@@ -219,6 +227,11 @@ class ScenarioDataset(nn.Module):
         return inputs
 
     @functools.cached_property
+    def glob_inputs(self):
+        glob_inputs = torch.cat([s.glob_inputs for s in self.scenarios.values()])
+        return glob_inputs
+
+    @functools.cached_property
     def full_timesteps(self):
         full_timesteps = torch.cat([s.full_timesteps for s in self.scenarios.values()])
         return full_timesteps
@@ -248,6 +261,11 @@ class ScenarioDataset(nn.Module):
         full_inputs = torch.cat([s.full_inputs for s in self.scenarios.values()])
         return full_inputs
 
+    @functools.cached_property
+    def full_glob_inputs(self):
+        full_glob_inputs = torch.cat([s.full_glob_inputs for s in self.scenarios.values()])
+        return full_glob_inputs
+
     def __len__(self):
         return len(self.scenarios)
 
@@ -264,14 +282,12 @@ class Scenario(nn.Module):
         hist_scenario (Scenario): historical scenario needed to complete SSPs timeseries is this is a SSP scenario]
 
     """
-    def __init__(self, timesteps, emissions, tas, lon=None, lat=None, glob_emissions=None, glob_tas=None, name=None, hist_scenario=None):
+    def __init__(self, timesteps, emissions, tas, lon=None, lat=None, name=None, hist_scenario=None):
         super().__init__()
         self.name = name
         self.register_buffer('timesteps', timesteps)
         self.register_buffer('emissions', emissions)
         self.register_buffer('tas', tas)
-        self._register_buffer('glob_emissions', glob_emissions)
-        self._register_buffer('glob_tas', glob_tas)
         self._register_buffer('lat', lat)
         self._register_buffer('lon', lon)
         self.hist_scenario = hist_scenario if hist_scenario else []
@@ -326,6 +342,22 @@ class Scenario(nn.Module):
     @property
     def glob_hist_tas(self):
         return self.hist_scenario.glob_tas
+
+    @functools.cached_property
+    def weights(self):
+        return torch.cos(torch.deg2rad(self.lat))
+
+    @functools.cached_property
+    def glob_emissions(self):
+        weighted_emissions = self.emissions.mul(self.weights.view(1, -1, 1, 1))
+        glob_emissions = weighted_emissions.sum(dim=(1, 2)).div(self.weights.sum() * len(self.lon))
+        return glob_emissions
+
+    @functools.cached_property
+    def glob_tas(self):
+        weighted_tas = self.tas.mul(self.weights.view(1, -1, 1))
+        glob_tas = weighted_tas.sum(dim=(1, 2)).div(self.weights.sum() * len(self.lon))
+        return glob_tas
 
     @functools.cached_property
     def full_timesteps(self):
@@ -400,6 +432,10 @@ class Scenario(nn.Module):
         return self.full_cum_emissions[-len(self):]
 
     @functools.cached_property
+    def glob_cum_emissions(self):
+        return self.full_glob_cum_emissions[-len(self):]
+
+    @functools.cached_property
     def concentrations(self):
         return self.trim_hist(self.full_concentrations)
 
@@ -419,6 +455,20 @@ class Scenario(nn.Module):
                                 self.emissions[..., 1:]], dim=-1)
         return inputs
 
+    @functools.cached_property
+    def glob_inputs(self):
+        glob_inputs = torch.cat([self.timesteps.unsqueeze(-1),
+                                 self.glob_cum_emissions[..., 0, None],
+                                 self.glob_emissions[..., 1:]], dim=-1)
+        return glob_inputs
+
+    @functools.cached_property
+    def full_glob_inputs(self):
+        full_glob_inputs = torch.cat([self.full_timesteps.unsqueeze(-1),
+                                      self.full_glob_cum_emissions[..., 0, None],
+                                      self.full_glob_emissions[..., 1:]], dim=-1)
+        return full_glob_inputs
+
     def __len__(self):
         return len(self.timesteps)
 
@@ -428,3 +478,100 @@ class Scenario(nn.Module):
         except AttributeError:
             output = f"Scenario({self.name})"
         return output
+
+
+class GridInducingScenario(Scenario):
+    """Utility class to represent a gas emission scenario timeserie with associated
+    temperature response used as inducing points in SVGP
+
+    Args:
+        timesteps (torch.Tensor): (n_timesteps,) tensor of dates of each time step as floats
+        emissions (torch.Tensor): (n_timesteps, n_agents) or (n_timesteps, n_lat, n_lon, n_agents) tensor of emissions
+        tas (torch.Tensor): (n_timesteps,) or (n_timesteps, n_lat, nlon) tensor of surface temperature anomaly
+        name (str): name of time serie
+        hist_scenario (Scenario): historical scenario needed to complete SSPs timeseries is this is a SSP scenario]
+
+    """
+    def __init__(self, base_scenario, n_inducing_times, n_inducing_lats, n_inducing_lons, d_map, q_map):
+        super().__init__(timesteps=base_scenario.timesteps,
+                         emissions=base_scenario.emissions,
+                         tas=base_scenario.tas,
+                         lon=base_scenario.lon,
+                         lat=base_scenario.lat,
+                         name=base_scenario.name,
+                         hist_scenario=base_scenario.hist_scenario)
+        idx_inducing_times, inducing_times = self._init_regularly_spaced_point(self.full_timesteps, n_inducing_times)
+        idx_inducing_lats, inducing_lats = self._init_regularly_spaced_point(self.lat, n_inducing_lats)
+        idx_inducing_lons, inducing_lons = self._init_regularly_spaced_point(self.lon, n_inducing_lons)
+        self.register_buffer('idx_inducing_times', idx_inducing_times)
+        self.register_buffer('idx_inducing_lats', idx_inducing_lats)
+        self.register_buffer('idx_inducing_lons', idx_inducing_lons)
+        self.register_buffer('inducing_times', inducing_times)
+        self.register_buffer('inducing_lats', inducing_lats)
+        self.register_buffer('inducing_lons', inducing_lons)
+
+        inducing_d_map = d_map[:, self.idx_inducing_lats][..., self.idx_inducing_lons]
+        inducing_q_map = q_map[:, self.idx_inducing_lats][..., self.idx_inducing_lons]
+        self.register_buffer('d_map', inducing_d_map)
+        self.register_buffer('q_map', inducing_q_map)
+
+        self.n_inducing_times = n_inducing_times
+        self.n_inducing_lats = n_inducing_lats
+        self.n_inducing_lons = n_inducing_lons
+        self.n_inducing_points = n_inducing_times * n_inducing_lats * n_inducing_lons
+
+    def trim_noninducing_times(self, timeserie):
+        return timeserie[::len(self.full_timesteps) // self.n_inducing_times + 1]
+
+    def _init_regularly_spaced_point(self, array, n_points):
+        n = len(array)
+        step = n // n_points
+        step = (n - step) // n_points
+        idx = torch.round(torch.linspace(step, n - step - 1, n_points)).long()
+        return idx, array[idx]
+
+    def __repr__(self):
+        try:
+            output = f"GridInducingScenario({self.name}, time={len(self.inducing_times)}, lat={len(self.inducing_lats)}, lon={len(self.inducing_lons)})"
+        except AttributeError:
+            output = f"GridInducingScenario({self.name})"
+        return output
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+####

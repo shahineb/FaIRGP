@@ -14,7 +14,7 @@ import logging
 from docopt import docopt
 import pandas as pd
 import torch
-from src.preprocessing import make_data
+from src.preprocessing.glob import make_data
 from src.evaluation.metrics import compute_deterministic_metrics
 import src.fair as fair
 

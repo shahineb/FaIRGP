@@ -15,7 +15,7 @@ from docopt import docopt
 import tqdm
 import torch
 from gpytorch import kernels, likelihoods, mlls
-from src.preprocessing import make_data
+from src.preprocessing.glob import make_data
 from src.models import ThermalBoxesGP
 from src.evaluation import dump_state_dict
 

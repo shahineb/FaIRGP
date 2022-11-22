@@ -105,7 +105,7 @@ def step_kernel(Kj_old, I_row, q, d, dt=1):
         type: np.ndarray row for time step t_i
 
     """
-    decay_factor = np.exp(-dt / d)
+    decay_factor = torch.exp(-dt / d)
     Kj_new = Kj_old * decay_factor + q**2 * I_row * (1 - decay_factor) / d
     Kj_new = (Kj_new + Kj_old) / 2
     return Kj_new
