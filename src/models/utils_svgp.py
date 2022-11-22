@@ -241,148 +241,21 @@ def sample_indices(scenario, n_time, n_lat, n_lon, seed=None):
     lat_idx = torch.arange(lat_idx, lat_idx + n_lat)
     lon_idx = torch.randperm(len(scenario.lon) - n_lon + 1)[0]
     lon_idx = torch.arange(lon_idx, lon_idx + n_lon)
-    # lat_idx = torch.zeros(1).long()
-    # lon_idx = torch.zeros(1).long()
     return time_idx, lat_idx, lon_idx
 
 
-# def compute_I(scenario_dataset, inducing_scenario, kernel):
-#     I = [compute_I_scenario(scenario_dataset, inducing_scenario, scenario, kernel)
-#          for scenario in scenario_dataset.scenarios.values()]
-#     I = torch.cat(I, dim=0)
-#     return I
+def compute_ell(qf, targets, batch_size, model):
+    # Compute ELL scaling term
+    eps = torch.finfo(torch.float32).eps
+    α = batch_size * torch.log(2 * np.pi * model.likelihood.noise + eps)
 
+    # Compute ELL covariance term
+    β = qf.variance.div(model.likelihood.noise).sum()
 
-# def compute_I_scenario(scenario1, scenario2, idx1, idx2, kernel, d_map, mu, sigma, I_hist=None):
-#     scenario1_emissions_std = (scenario1.full_glob_inputs - mu) / sigma
-#     scenario2_emissions_std = (scenario2.full_glob_inputs - mu) / sigma
-#
-#     K = kernel(scenario1_emissions_std, scenario2_emissions_std).evaluate()[:, :, None, None, None]
-#     I = torch.zeros((K.size(0), len(idx2)) + d_map.shape)
-#     if I_hist is None:
-#         I_old = I[:, 0]
-#         t0 = 1
-#     else:
-#         I_old = I_hist
-#         t0 = len(scenario2.hist_scenario)
-#
-#     i = 0
-#
-#     for t in range(t0, idx2.max()):
-#         K_new = K[:, t]
-#         I_new = step_I(I_old, K_new, d_map)
-#         if torch.any(idx2 == t).item():
-#             i += 1
-#             I[:, i] = I_new
-#         I_old = I_new
-#     return I
+    # Compute ELL mean term
+    γ = (targets.view(-1) - qf.mean)**2
+    γ = γ.div(model.likelihood.noise).sum()
 
-
-# def step_I(I_old, K_new, d_map, dt=1):
-#     decay_factor = torch.exp(-dt / d_map)
-#     I_new = I_old * decay_factor + d_map * K_new * (1 - decay_factor)
-#     I_new = (I_new + I_old) / 2
-#     return I_new
-
-
-# def compute_covariance_scenario(scenario1, scenario2, idx1, idx2, kernel, I, q_map, d_map, Kj_hist=None):
-#     q_d_ratio = q_map.div(d_map)
-#
-#     covar = torch.zeros(len(idx1), len(idx2), I.size(3), I.size(4), q_map.size(1), q_map.size(2))
-#     Kj_old = covar[0].unsqueeze(1).repeat(1, I.size(2), 1, 1, 1, 1)
-#     if Kj_hist is None:
-#         Kj_old = covar[0].unsqueeze(1).repeat(1, I.size(2), 1, 1, 1, 1)
-#         t0 = 1
-#     else:
-#         Kj_old = Kj_hist
-#         t0 = len(scenario1.hist_scenario)
-#
-#     i = 0
-#
-#     for t in range(t0, idx1.max()):
-#         I_new = I[t]
-#         Kj_new = step_kernel(Kj_old, I_new, q_d_ratio, q_map, d_map)
-#         if torch.any(idx2 == t).item():
-#             i += 1
-#             covar[t] = Kj_new.sum(dim=1)
-#         Kj_old = Kj_new
-#     return covar
-#
-#
-# def compute_covariance_scenario(scenario_dataset, inducing_scenario, scenario, I, q_map, d_map):
-#     inducing_q_d_ratio = inducing_scenario.q_map / inducing_scenario.d_map
-#     Kj = torch.zeros(I.size(0), I.size(1), I.size(3), I.size(4), q_map.size(1), q_map.size(2))
-#     Kj_old = Kj[0].unsqueeze(1).repeat(1, 3, 1, 1, 1, 1)
-#     for t in range(1, I.size(0)):
-#         I_new = I[t]
-#         Kj_new = step_kernel(Kj_old, I_new, inducing_q_d_ratio, q_map, d_map)
-#         Kj_old = Kj_new
-#         Kj[t] = Kj_new.sum(dim=1)
-#     Kj = scenario.trim_hist(Kj)
-#     return Kj
-#
-
-
-# def compute_I(scenario_dataset, inducing_scenario, kernel):
-#     I = [compute_I_scenario(scenario_dataset, inducing_scenario, scenario, kernel)
-#          for scenario in scenario_dataset.scenarios.values()]
-#     I = torch.cat(I, dim=0)
-#     return I
-
-#
-# def compute_I_scenario(scenario_dataset, inducing_scenario, scenario, kernel):
-#     mu, sigma = scenario_dataset.mu_glob_inputs, scenario_dataset.sigma_glob_inputs
-#     scenario_emissions_std = (scenario.full_glob_inputs - mu) / sigma
-#     inducing_emissions_std = (inducing_scenario.full_glob_inputs - mu) / sigma
-#
-#     inducing_d_map = inducing_scenario.d_map
-#
-#     K = kernel(inducing_emissions_std, scenario_emissions_std).evaluate()[:, :, None, None, None]
-#     I = torch.zeros(K.size(0), K.size(1), inducing_d_map.size(0), inducing_d_map.size(1), inducing_d_map.size(2))
-#     for t in range(1, len(scenario_emissions_std)):
-#         I_old = I[:, t - 1]
-#         K_new = K[:, t]
-#         I_new = step_I(I_old, K_new, inducing_d_map)
-#         I[:, t] = I_new
-#     I = inducing_scenario.trim_noninducing_times(I.permute(1, 0, 2, 3, 4)).permute(1, 0, 2, 3, 4)
-#     return I
-#
-#
-# def step_I(I_old, K_new, inducing_d_map, dt=1):
-#     decay_factor = torch.exp(-dt / inducing_d_map)
-#     I_new = I_old * decay_factor + inducing_d_map * K_new * (1 - decay_factor)
-#     I_new = (I_new + I_old) / 2
-#     return I_new
-
-
-# def compute_covariance(scenario_dataset, inducing_scenario, I, q_map, d_map):
-#     Kj = [compute_covariance_scenario(scenario_dataset, inducing_scenario, scenario, I, q_map, d_map)
-#           for scenario in scenario_dataset.scenarios.values()]
-#     Kj = torch.cat(Kj, dim=0)
-#     return Kj
-
-
-# def compute_covariance_scenario(scenario_dataset, inducing_scenario, scenario, I, q_map, d_map):
-#     inducing_q_d_ratio = inducing_scenario.q_map / inducing_scenario.d_map
-#     Kj = torch.zeros(I.size(0), I.size(1), I.size(3), I.size(4), q_map.size(1), q_map.size(2))
-#     Kj_old = Kj[0].unsqueeze(1).repeat(1, 3, 1, 1, 1, 1)
-#     for t in range(1, I.size(0)):
-#         I_new = I[t]
-#         Kj_new = step_kernel(Kj_old, I_new, inducing_q_d_ratio, q_map, d_map)
-#         Kj_old = Kj_new
-#         Kj[t] = Kj_new.sum(dim=1)
-#     Kj = scenario.trim_hist(Kj)
-#     return Kj
-
-
-# def compute_inducing_covariance(scenario_dataset, inducing_scenario, inducing_I):
-#     inducing_q_d_ratio = inducing_scenario.q_map / inducing_scenario.d_map
-#     Kj = torch.zeros(inducing_I.size(0), inducing_I.size(1), inducing_I.size(3), inducing_I.size(4), inducing_q_d_ratio.size(1), inducing_q_d_ratio.size(2))
-#     Kj_old = Kj[0].unsqueeze(1).repeat(1, 3, 1, 1, 1, 1)
-#     for t in range(1, inducing_I.size(0)):
-#         I_new = inducing_I[t]
-#         Kj_new = step_kernel(Kj_old, I_new, inducing_q_d_ratio, inducing_scenario.q_map, inducing_scenario.d_map)
-#         Kj_old = Kj_new
-#         Kj[t] = Kj_new.sum(dim=1)
-#     Kj = inducing_scenario.trim_noninducing_times(Kj)
-#     return Kj
+    # Combine and return
+    ell = -0.5 * torch.sum(α + β + γ)
+    return ell, α, β, γ

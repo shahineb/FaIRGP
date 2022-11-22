@@ -3,9 +3,7 @@ import sys
 import torch
 import gpytorch
 from gpytorch.models import ApproximateGP
-from gpytorch import variational, distributions
-from linear_operator.operators import DiagLinearOperator
-from tqdm import tqdm
+from gpytorch import variational
 from .utils_svgp import compute_mean, compute_means, compute_Kxx, compute_Kwx, compute_Kww, sample_scenario, sample_indices
 
 base_dir = os.path.join(os.getcwd(), '..')
@@ -79,8 +77,6 @@ class ThermalBoxesSVGP(ApproximateGP):
                           q_map=self.q_map,
                           mu=self.mu,
                           sigma=self.sigma)
-        # if not diag:
-        #     Kxx = gpytorch.add_jitter(Kxx)
         Kww = gpytorch.add_jitter(Kww)
         return Kxx, Kww, Kwx
 

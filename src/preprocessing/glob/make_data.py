@@ -8,7 +8,7 @@ import sys
 from collections import namedtuple
 from .preprocess_data import load_emissions_dataset, load_response_dataset, make_scenario, get_fair_params
 
-base_dir = os.path.join(os.getcwd(), '..')
+base_dir = os.path.join(os.getcwd(), '../..')
 sys.path.append(base_dir)
 
 from src.structures import ScenarioDataset
