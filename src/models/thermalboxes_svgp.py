@@ -27,8 +27,8 @@ class ThermalBoxesSVGP(ApproximateGP):
         self.train_means = self._compute_means(scenario_dataset)
         self.train_targets = {name: scenario_dataset[name].tas - self.train_means[name]
                               for name in scenario_dataset.scenarios.keys()}
-        self.mu_targets = torch.cat([v for v in self.train_targets.values()]).mean()
-        self.sigma_targets = torch.cat([v for v in self.train_targets.values()]).std()
+        self.register_buffer('mu_targets', torch.cat([v for v in self.train_targets.values()]).mean())
+        self.register_buffer('sigma_targets', torch.cat([v for v in self.train_targets.values()]).std())
         self.train_targets = {name: (target - self.mu_targets) / self.sigma_targets
                               for (name, target) in self.train_targets.items()}
 
@@ -94,3 +94,11 @@ class ThermalBoxesSVGP(ApproximateGP):
     @property
     def inducing_scenario(self):
         return self.variational_strategy.inducing_scenario
+
+    def to(self, device):
+        super().to(device)
+        self.train_means = {k: v.to(device) for (k, v) in self.train_means.items()}
+        self.train_targets = {k: v.to(device) for (k, v) in self.train_targets.items()}
+
+    def cpu(self):
+        self.to(device='cpu')

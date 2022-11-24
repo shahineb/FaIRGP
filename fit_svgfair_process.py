@@ -47,6 +47,10 @@ def main(args, cfg):
 
 def migrate_to_device(data, device):
     # These are the only tensors needed on device to run this experiment
+    data = data._replace(scenarios=data.scenarios.to(device),
+                         inducing_scenario=data.inducing_scenario.to(device),
+                         d_map=data.d_map.to(device),
+                         q_map=data.q_map.to(device))
     return data
 
 
