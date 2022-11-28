@@ -22,6 +22,7 @@ from src.structures import ScenarioDataset, GridInducingScenario
 field_names = ['scenarios',
                'inducing_scenario',
                'fair_kwargs',
+               'S0',
                'd_map',
                'q_map',
                'misc']
@@ -70,6 +71,9 @@ def make_data(cfg):
     # Load FaIR NORESM2-LM tuned parameters
     fair_kwargs = get_fair_params()
 
+    # Load initial S0 map
+    S0 = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'S0.npy'))).double()
+
     # Load d and q maps
     d_map = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'd_maps.npy'))).double()
     q_map = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'q_maps.npy'))).double()
@@ -87,6 +91,7 @@ def make_data(cfg):
     kwargs = {'scenarios': scenarios,
               'inducing_scenario': inducing_scenario,
               'fair_kwargs': fair_kwargs,
+              'S0': S0,
               'd_map': d_map,
               'q_map': q_map}
     data = Data(**kwargs)

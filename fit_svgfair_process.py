@@ -74,6 +74,7 @@ def make_model(cfg, data):
                              kernel=kernel,
                              likelihood=likelihood,
                              FaIR_model=FaIR_model,
+                             S0=data.S0,
                              q_map=data.q_map,
                              d_map=data.d_map)
     return model

@@ -13,7 +13,7 @@ from src.variational import ScenarioVariationalStrategy
 
 
 class ThermalBoxesSVGP(ApproximateGP):
-    def __init__(self, scenario_dataset, inducing_scenario, kernel, likelihood, FaIR_model, q_map, d_map):
+    def __init__(self, scenario_dataset, inducing_scenario, kernel, likelihood, FaIR_model, S0, q_map, d_map):
         variational_strategy = self._set_variational_strategy(inducing_scenario)
         super().__init__(variational_strategy=variational_strategy)
         self.kernel = kernel
@@ -22,6 +22,7 @@ class ThermalBoxesSVGP(ApproximateGP):
         self.FaIR_model = FaIR_model
         self.register_buffer('mu', scenario_dataset.mu_glob_inputs)
         self.register_buffer('sigma', scenario_dataset.sigma_glob_inputs)
+        self.register_buffer('S0', S0)
         self.register_buffer('q_map', q_map)
         self.register_buffer('d_map', d_map)
         self.train_means = self._compute_means(scenario_dataset)
@@ -43,11 +44,11 @@ class ThermalBoxesSVGP(ApproximateGP):
         return variational_strategy
 
     def _compute_mean(self, scenario):
-        mean = compute_mean(scenario, self.FaIR_model, self.d_map, self.q_map)
+        mean = compute_mean(scenario, self.FaIR_model, self.S0, self.d_map, self.q_map)
         return mean
 
     def _compute_means(self, scenario_dataset):
-        means_dict = compute_means(scenario_dataset, self.FaIR_model, self.d_map, self.q_map)
+        means_dict = compute_means(scenario_dataset, self.FaIR_model, self.S0, self.d_map, self.q_map)
         return means_dict
 
     def _compute_covariance(self, scenario, time_idx, lat_idx, lon_idx, diag=False):

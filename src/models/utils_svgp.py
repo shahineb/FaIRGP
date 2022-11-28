@@ -2,19 +2,19 @@ import numpy as np
 import torch
 
 
-def compute_mean(scenario, FaIR_model, d_map, q_map):
+def compute_mean(scenario, FaIR_model, S0, d_map, q_map):
     timestep = torch.cat([torch.ones(1), torch.diff(scenario.full_timesteps)])
     emissions = scenario.full_glob_emissions.T
     weights = torch.cos(torch.deg2rad(scenario.lat.double()))
-    res = FaIR_model(emissions, timestep, d_map, q_map, weights)
+    res = FaIR_model(emissions, timestep, d_map, q_map, weights, S0)
     T = scenario.trim_hist(res['T'].float())
     return T
 
 
-def compute_means(scenario_dataset, FaIR_model, d_map, q_map):
+def compute_means(scenario_dataset, FaIR_model, S0, d_map, q_map):
     means = dict()
     for name, scenario in scenario_dataset.scenarios.items():
-        T = compute_mean(scenario, FaIR_model, d_map, q_map)
+        T = compute_mean(scenario, FaIR_model, S0, d_map, q_map)
         means.update({name: T})
     return means
 
