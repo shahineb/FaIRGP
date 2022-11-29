@@ -24,6 +24,8 @@ def compute_Kxx(scenario,
                 lat_idx,
                 lon_idx,
                 kernel,
+                klat,
+                klon,
                 d_map,
                 q_map,
                 mu,
@@ -49,6 +51,10 @@ def compute_Kxx(scenario,
                                                       I=I,
                                                       q_map=q_map,
                                                       d_map=d_map)
+        Klat_diag = klat(scenario.std_lat[lat_idx]).diag()
+        Klon_diag = klon(scenario.std_lon[lon_idx]).diag()
+        covar_diag = covar_diag.mul(Klat_diag.view(1, -1, 1))
+        covar_diag = covar_diag.mul(Klon_diag.view(1, 1, -1))
         output = covar_diag.flatten()
     else:
         covar = compute_covariance_scenario(scenario1=scenario,
@@ -63,7 +69,12 @@ def compute_Kxx(scenario,
                                             d_map=d_map,
                                             q_map=q_map)
         n = len(time_idx) * len(lat_idx) * len(lon_idx)
-        output = covar.permute(0, 4, 5, 1, 2, 3).reshape(n, -1)
+        covar = covar.permute(0, 4, 5, 1, 2, 3)
+        Klat = klat(scenario.std_lat[lat_idx]).evaluate()
+        Klon = klon(scenario.std_lon[lon_idx]).evaluate()
+        covar = covar.mul(Klat.view(1, Klat.size(0), 1, 1, Klat.size(1), 1))
+        covar = covar.mul(Klon.view(1, 1, Klon.size(0), 1, 1, Klon.size(1)))
+        output = covar.reshape(n, -1)
     return output
 
 
@@ -73,6 +84,8 @@ def compute_Kwx(inducing_scenario,
                 lat_idx,
                 lon_idx,
                 kernel,
+                klat,
+                klon,
                 d_map,
                 q_map,
                 mu,
@@ -100,16 +113,23 @@ def compute_Kwx(inducing_scenario,
                                         I=I,
                                         d_map=d_map,
                                         q_map=q_map)
-    covar = covar.permute(0, 4, 5, 1, 2, 3).reshape(inducing_scenario.n_inducing_points, -1)
+    covar = covar.permute(0, 4, 5, 1, 2, 3)
+    Klat = klat(inducing_scenario.std_lat[inducing_scenario.idx_inducing_lats], scenario.std_lat[lat_idx]).evaluate()
+    Klon = klon(inducing_scenario.std_lon[inducing_scenario.idx_inducing_lons], scenario.std_lon[lon_idx]).evaluate()
+    covar = covar.mul(Klat.view(1, Klat.size(0), 1, 1, Klat.size(1), 1))
+    covar = covar.mul(Klon.view(1, 1, Klon.size(0), 1, 1, Klon.size(1)))
+    covar = covar.reshape(inducing_scenario.n_inducing_points, -1)
     return covar
 
 
-def compute_Kww(inducing_scenario, kernel, d_map, q_map, mu, sigma):
+def compute_Kww(inducing_scenario, kernel, klat, klon, d_map, q_map, mu, sigma):
     Kww = compute_Kxx(inducing_scenario,
                       inducing_scenario.idx_inducing_times,
                       inducing_scenario.idx_inducing_lats,
                       inducing_scenario.idx_inducing_lons,
                       kernel,
+                      klat,
+                      klon,
                       d_map,
                       q_map,
                       mu,

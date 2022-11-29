@@ -343,6 +343,14 @@ class Scenario(nn.Module):
     def glob_hist_tas(self):
         return self.hist_scenario.glob_tas
 
+    @property
+    def std_lat(self):
+        return (self.lat + 1.5895e-07) / 52.7813
+
+    @property
+    def std_lon(self):
+        return (self.lon - 178.7500) / 104.2833
+
     @functools.cached_property
     def weights(self):
         return torch.cos(torch.deg2rad(self.lat))

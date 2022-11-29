@@ -70,6 +70,8 @@ def make_model(cfg, data):
     k_t = kernels.MaternKernel(nu=0.5, active_dims=[0])
     k_E = kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[1, 2, 3, 4])
     kernel = k_E + k_t
+    klat = kernels.MaternKernel(nu=1.5)
+    klon = kernels.MaternKernel(nu=1.5)
 
     # Instantiate gaussian observation likelihood
     likelihood = likelihoods.GaussianLikelihood()
@@ -79,6 +81,8 @@ def make_model(cfg, data):
     model = ThermalBoxesSVGP(scenario_dataset=data.scenarios,
                              inducing_scenario=data.inducing_scenario,
                              kernel=kernel,
+                             klat=klat,
+                             klon=klon,
                              likelihood=likelihood,
                              FaIR_model=FaIR_model,
                              S0=data.S0,
