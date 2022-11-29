@@ -3,7 +3,7 @@ import torch
 
 
 def compute_mean(scenario, FaIR_model, S0, d_map, q_map):
-    timestep = torch.cat([torch.ones(1), torch.diff(scenario.full_timesteps)])
+    timestep = torch.cat([torch.ones(1).to(scenario.full_timesteps.device), torch.diff(scenario.full_timesteps)])
     emissions = scenario.full_glob_emissions.T
     weights = torch.cos(torch.deg2rad(scenario.lat.double()))
     res = FaIR_model(emissions, timestep, d_map, q_map, weights, S0)
@@ -130,7 +130,7 @@ def compute_I_scenario(scenario1, scenario2,
     scenario2_emissions_std = (scenario2.full_glob_inputs - mu) / sigma
 
     K = kernel(scenario1_emissions_std, scenario2_emissions_std).evaluate()[:, :, None, None, None]
-    I = torch.zeros(K.size(0), len(time_idx2), d_map.size(0), len(lat_idx2), len(lon_idx2))
+    I = torch.zeros(K.size(0), len(time_idx2), d_map.size(0), len(lat_idx2), len(lon_idx2)).to(K.device)
     d_map2 = d_map[:, lat_idx2][..., lon_idx2]
 
     I_old = I[:, 0]
@@ -153,7 +153,7 @@ def compute_covariance_scenario(scenario1, scenario2,
                                 I, q_map, d_map):
     covar = torch.zeros(len(time_idx1), len(time_idx2),
                         len(lat_idx2), len(lon_idx2),
-                        len(lat_idx1), len(lon_idx1))
+                        len(lat_idx1), len(lon_idx1)).to(q_map.device)
     q_map1 = q_map[:, lat_idx1][..., lon_idx1]
     d_map1 = d_map[:, lat_idx1][..., lon_idx1]
     q_d_ratio_2 = q_map[:, lat_idx2][..., lon_idx2].div(d_map[:, lat_idx2][..., lon_idx2])
@@ -178,7 +178,7 @@ def compute_covariance_scenario_diag(scenario,
                                      I,
                                      q_map,
                                      d_map):
-    covar_diag = torch.zeros(len(time_idx), len(lat_idx), len(lon_idx))
+    covar_diag = torch.zeros(len(time_idx), len(lat_idx), len(lon_idx)).to(I.device)
     rq_map = q_map[:, lat_idx][..., lon_idx]
     rd_map = d_map[:, lat_idx][..., lon_idx]
     q_d_ratio = rq_map.div(rd_map)

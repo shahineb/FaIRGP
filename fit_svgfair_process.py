@@ -58,10 +58,11 @@ def migrate_to_device(data, device):
 def make_model(cfg, data):
     # Instantiate backbone FaIR model and deactivate training
     forcing_pattern = np.ones((len(data.scenarios[0].lat), len(data.scenarios[0].lon)))  # uniform forcing pattern for now
-    with torch.no_grad():
-        FaIR_model = FaIR(**data.fair_kwargs, forcing_pattern=forcing_pattern)
-        for param in FaIR_model.parameters():
-            param.requires_grad = False
+    # with torch.no_grad():
+    FaIR_model = FaIR(**data.fair_kwargs, forcing_pattern=forcing_pattern)
+    for param in FaIR_model.parameters():
+        param.requires_grad = False
+    FaIR_model = FaIR_model.to(data.S0.device)
 
     # Instantiate kernel for GP prior over forcing
     kernel = kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[1, 2, 3, 4])
@@ -78,6 +79,11 @@ def make_model(cfg, data):
                              S0=data.S0,
                              q_map=data.q_map,
                              d_map=data.d_map)
+    print("metodio")
+    print(model.variational_strategy.inducing_scenario.timesteps.device)
+    print(model.variational_strategy.inducing_scenario.full_timesteps.device)
+    print(model.variational_strategy.inducing_scenario.hist_scenario)
+    print("metodio")
     return model
 
 

@@ -464,6 +464,11 @@ class Scenario(nn.Module):
 
     @functools.cached_property
     def full_glob_inputs(self):
+        print("A")
+        print(self.timesteps.device)
+        print(self.full_timesteps.device)
+        print(self.full_glob_cum_emissions.device)
+        print(self.full_glob_emissions.device)
         full_glob_inputs = torch.cat([self.full_timesteps.unsqueeze(-1),
                                       self.full_glob_cum_emissions[..., 0, None],
                                       self.full_glob_emissions[..., 1:]], dim=-1)

@@ -97,9 +97,12 @@ class ThermalBoxesSVGP(ApproximateGP):
         return self.variational_strategy.inducing_scenario
 
     def to(self, device):
-        super().to(device)
+        self = super().to(device)
         self.train_means = {k: v.to(device) for (k, v) in self.train_means.items()}
         self.train_targets = {k: v.to(device) for (k, v) in self.train_targets.items()}
+        self.FaIR_model = self.FaIR_model.to(device)
+        return self
 
     def cpu(self):
         self.to(device='cpu')
+        return self

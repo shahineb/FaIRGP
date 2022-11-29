@@ -72,7 +72,7 @@ def make_data(cfg):
     fair_kwargs = get_fair_params()
 
     # Load initial S0 map
-    S0 = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'S0.npy'))).double()
+    S0 = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'S0_map.npy'))).double()
 
     # Load d and q maps
     d_map = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'd_maps.npy'))).double()
