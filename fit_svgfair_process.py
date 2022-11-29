@@ -79,11 +79,6 @@ def make_model(cfg, data):
                              S0=data.S0,
                              q_map=data.q_map,
                              d_map=data.d_map)
-    print("metodio")
-    print(model.variational_strategy.inducing_scenario.timesteps.device)
-    print(model.variational_strategy.inducing_scenario.full_timesteps.device)
-    print(model.variational_strategy.inducing_scenario.hist_scenario)
-    print("metodio")
     return model
 
 

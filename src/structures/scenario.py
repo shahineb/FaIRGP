@@ -464,15 +464,80 @@ class Scenario(nn.Module):
 
     @functools.cached_property
     def full_glob_inputs(self):
-        print("A")
-        print(self.timesteps.device)
-        print(self.full_timesteps.device)
-        print(self.full_glob_cum_emissions.device)
-        print(self.full_glob_emissions.device)
         full_glob_inputs = torch.cat([self.full_timesteps.unsqueeze(-1),
                                       self.full_glob_cum_emissions[..., 0, None],
                                       self.full_glob_emissions[..., 1:]], dim=-1)
         return full_glob_inputs
+
+    def _clear_cache(self):
+        try:
+            del self.weights
+        except AttributeError:
+            pass
+        try:
+            del self.glob_emissions
+        except AttributeError:
+            pass
+        try:
+            del self.glob_tas
+        except AttributeError:
+            pass
+        try:
+            del self.full_timesteps
+        except AttributeError:
+            pass
+        try:
+            del self.full_emissions
+        except AttributeError:
+            pass
+        try:
+            del self.full_tas
+        except AttributeError:
+            pass
+        try:
+            del self.full_glob_emissions
+        except AttributeError:
+            pass
+        try:
+            del self.full_glob_tas
+        except AttributeError:
+            pass
+        try:
+            del self.full_cum_emissions
+        except AttributeError:
+            pass
+        try:
+            del self.full_glob_cum_emissions
+        except AttributeError:
+            pass
+        try:
+            del self.full_concentrations
+        except AttributeError:
+            pass
+        try:
+            del self.full_inputs
+        except AttributeError:
+            pass
+        try:
+            del self.cum_emissions
+        except AttributeError:
+            pass
+        try:
+            del self.glob_cum_emissions
+        except AttributeError:
+            pass
+        try:
+            del self.inputs
+        except AttributeError:
+            pass
+        try:
+            del self.glob_inputs
+        except AttributeError:
+            pass
+        try:
+            del self.full_glob_inputs
+        except AttributeError:
+            pass
 
     def __len__(self):
         return len(self.timesteps)

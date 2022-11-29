@@ -100,7 +100,6 @@ def compute_Kwx(inducing_scenario,
                                         I=I,
                                         d_map=d_map,
                                         q_map=q_map)
-    # print(covar.shape)
     covar = covar.permute(0, 4, 5, 1, 2, 3).reshape(inducing_scenario.n_inducing_points, -1)
     return covar
 
