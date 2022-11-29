@@ -67,10 +67,13 @@ def make_model(cfg, data):
     FaIR_model = FaIR_model.to(data.S0.device)
 
     # Instantiate kernel for GP prior over forcing
-    kernel = kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[1, 2, 3, 4])
+    k_t = kernels.MaternKernel(nu=0.5, active_dims=[0])
+    k_E = kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[1, 2, 3, 4])
+    kernel = k_E + k_t
 
     # Instantiate gaussian observation likelihood
     likelihood = likelihoods.GaussianLikelihood()
+    likelihood.raw_noise.requires_grad = False
 
     # Instantiate FaIR-constrained SVGP
     model = ThermalBoxesSVGP(scenario_dataset=data.scenarios,
@@ -141,6 +144,9 @@ def fit(model, data, cfg):
             logs['ell'].append(ell.detach().cpu().item())
             logs['kl'].append(kl_divergence.detach().cpu().item())
             logs['elbo'].append(-loss.detach().cpu().item())
+
+            if i > 100:
+                break
 
     return model, logs
 
