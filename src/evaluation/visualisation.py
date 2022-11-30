@@ -1,6 +1,9 @@
 import os
 import sys
 import torch
+import numpy as np
+import cartopy.crs as ccrs
+from cartopy.util import add_cyclic_point
 import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -49,4 +52,110 @@ def plot_scenario_prediction(posterior_dist, test_scenarios, model):
     ax.grid(alpha=0.5)
     ax.legend()
     plt.tight_layout()
+    return fig, ax
+
+
+def plot_contourf_with_zonal_avg(field, title="", levels=20, fontsize=14):
+    '''input field should be a 2D xarray.DataArray on a lat/lon grid.
+        Make a filled contour plot of the field, and a line plot of the zonal mean
+        Stolen from : https://brian-rose.github.io/ClimateLaboratoryBook/courseware/transient-cesm.html
+    '''
+    fig = plt.figure(figsize=(14, 6))
+    nrows = 10
+    ncols = 3
+    mapax = plt.subplot2grid((nrows, ncols), (0, 0), colspan=ncols - 1, rowspan=nrows - 1, projection=ccrs.Robinson())
+    barax = plt.subplot2grid((nrows, ncols), (nrows - 1, 0), colspan=ncols - 1)
+    plotax = plt.subplot2grid((nrows, ncols), (0, ncols - 1), rowspan=nrows - 1)
+    wrap_data, wrap_lon = add_cyclic_point(field.values, coord=field.lon, axis=field.dims.index('lon'))
+    vmax = np.abs(wrap_data).max()
+    cx = mapax.contourf(wrap_lon, field.lat, wrap_data, transform=ccrs.PlateCarree(),
+                        levels=levels, cmap='RdBu_r', vmin=-vmax, vmax=vmax)
+    mapax.set_global()
+    mapax.coastlines()
+    plt.colorbar(cx, cax=barax, orientation='horizontal')
+    field_mean = field.mean(dim='lon')
+    field_std = field.std(dim='lon')
+    plotax.plot(field_mean, field.lat, '--.', lw=2)
+    plotax.fill_betweenx(field.lat, field_mean - field_std, field_mean + field_std, alpha=0.3)
+    plotax.set_ylabel('Latitude', fontsize=fontsize)
+    plotax.set_xlabel('ΔT [K]', fontsize=fontsize)
+    plotax.grid()
+    fig.suptitle(title, fontsize=fontsize)
+    plt.tight_layout()
+    return fig, (mapax, plotax, barax), cx
+
+
+def plot_contourf_on_ax(field, fig, ax, levels=20, cmap='RdBu_r', vmax=None, title="", fontsize=14, colorbar=False):
+    '''input field should be a 2D xarray.DataArray on a lat/lon grid.
+    '''
+    wrap_data, wrap_lon = add_cyclic_point(field.values,
+                                           coord=field.lon,
+                                           axis=field.dims.index('lon'))
+    if not vmax:
+        vmax = np.abs(wrap_data).max()
+    cx = ax.contourf(wrap_lon,
+                     field.lat,
+                     wrap_data,
+                     levels=levels,
+                     vmax=vmax,
+                     vmin=-vmax,
+                     cmap=cmap,
+                     transform=ccrs.PlateCarree())
+    ax.set_global()
+    ax.coastlines()
+    if colorbar:
+        cax = ax.inset_axes((1.02, 0, 0.02, 1))
+        cbar = fig.colorbar(cx, cax=cax)
+        cbar.set_label('ΔΤ (K)', fontsize=fontsize)
+
+    if title:
+        ax.set_title(title, fontsize=fontsize)
+
+    output = (fig, ax, cbar) if colorbar else (fig, ax)
+    return output
+
+
+def plot_tryptych(xr_prior_mean,
+                  xr_correction,
+                  xr_posterior_mean,
+                  xr_posterior_ub,
+                  xr_posterior_lb,
+                  xr_groundtruth):
+    fig, ax = plt.subplots(3, 4, figsize=(25, 10), subplot_kw={'projection': ccrs.Robinson()})
+
+    for i in [0, 1, 3]:
+        ax[0, i].remove()
+        ax[2, i].remove()
+
+    vmax = max(np.abs(xr_posterior_ub.data).max(), np.abs(xr_posterior_lb.data).max(), np.abs(xr_groundtruth.data).max())
+
+    _ = plot_contourf_on_ax(xr_prior_mean, fig, ax[1, 0], title="Prior mean", vmax=vmax, colorbar=True)
+    _ = plot_contourf_on_ax(xr_correction, fig, ax[1, 1], title="Posterior correction", colorbar=True, cmap='plasma')
+    _ = plot_contourf_on_ax(xr_posterior_ub, fig, ax[0, 2], title="Posterior upper bound", vmax=vmax, colorbar=True)
+    _ = plot_contourf_on_ax(xr_posterior_mean, fig, ax[1, 2], title="Posterior mean", vmax=vmax, colorbar=True)
+    _ = plot_contourf_on_ax(xr_posterior_lb, fig, ax[2, 2], title="Posterior lower bound", vmax=vmax, colorbar=True)
+    _ = plot_contourf_on_ax(xr_groundtruth, fig, ax[1, 3], title="Groundtruth", vmax=vmax, colorbar=True)
+
+    plt.tight_layout()
+    return fig, ax
+
+
+def plot_timeserie_maps(xr_timeserie):
+    n_time = len(xr_timeserie.time)
+    fig, ax = plt.subplots(1, n_time, figsize=(5 * n_time, 10), subplot_kw={'projection': ccrs.Robinson()})
+
+    vmax = np.abs(xr_timeserie.data).max()
+
+    for i in range(n_time - 1):
+        _ = plot_contourf_on_ax(field=xr_timeserie.isel(time=i),
+                                fig=fig,
+                                ax=ax[i],
+                                title=xr_timeserie.time[i],
+                                vmax=vmax)
+    _ = plot_contourf_on_ax(field=xr_timeserie.isel(time=n_time),
+                            fig=fig,
+                            ax=ax[n_time],
+                            title=xr_timeserie.time[n_time],
+                            vmax=vmax,
+                            colorbar=True)
     return fig, ax
