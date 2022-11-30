@@ -130,7 +130,7 @@ def plot_tryptych(xr_prior_mean,
     vmax = max(np.abs(xr_posterior_ub.data).max(), np.abs(xr_posterior_lb.data).max(), np.abs(xr_groundtruth.data).max())
 
     _ = plot_contourf_on_ax(xr_prior_mean, fig, ax[1, 0], title="Prior mean", vmax=vmax, colorbar=True)
-    _ = plot_contourf_on_ax(xr_correction, fig, ax[1, 1], title="Posterior correction", colorbar=True, cmap='plasma')
+    _ = plot_contourf_on_ax(xr_correction, fig, ax[1, 1], title="Posterior correction", colorbar=True, cmap='inferno')
     _ = plot_contourf_on_ax(xr_posterior_ub, fig, ax[0, 2], title="Posterior upper bound", vmax=vmax, colorbar=True)
     _ = plot_contourf_on_ax(xr_posterior_mean, fig, ax[1, 2], title="Posterior mean", vmax=vmax, colorbar=True)
     _ = plot_contourf_on_ax(xr_posterior_lb, fig, ax[2, 2], title="Posterior lower bound", vmax=vmax, colorbar=True)
@@ -150,12 +150,13 @@ def plot_timeserie_maps(xr_timeserie):
         _ = plot_contourf_on_ax(field=xr_timeserie.isel(time=i),
                                 fig=fig,
                                 ax=ax[i],
-                                title=xr_timeserie.time[i],
+                                title=int(xr_timeserie.time.data[i]),
                                 vmax=vmax)
-    _ = plot_contourf_on_ax(field=xr_timeserie.isel(time=n_time),
+    _ = plot_contourf_on_ax(field=xr_timeserie.isel(time=-1),
                             fig=fig,
-                            ax=ax[n_time],
-                            title=xr_timeserie.time[n_time],
+                            ax=ax[-1],
+                            title=int(xr_timeserie.time.data[-1]),
                             vmax=vmax,
                             colorbar=True)
+    plt.tight_layout()
     return fig, ax
