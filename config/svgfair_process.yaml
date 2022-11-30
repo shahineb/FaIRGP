@@ -11,8 +11,8 @@ dataset:
   keys:
     - historical
     # - ssp126
-    - ssp245
-    - ssp370
+    # - ssp245
+    # - ssp370
     # - ssp585
 
 
@@ -22,7 +22,7 @@ model:
   # Specification of inducing scenario
   inducing_scenario:
     # Name of inducing scenario
-    key: ssp245
+    key: historical
 
     # Number of inducing times
     n_inducing_times: 10
@@ -38,19 +38,19 @@ model:
 # TRAINING
 training:
   # Number of training epochs
-  n_epochs: 1
+  n_epochs: 16
 
   # Learning rate
-  lr: 0.001
+  lr: 0.01
 
   # Number of time steps in a batch
-  batch_size_time: 8
+  batch_size_time: 16
 
   # Number of latitudes in a batch
-  batch_size_lat: 32
+  batch_size_lat: 8
 
   # Number of longitudes in a batch
-  batch_size_lon: 32
+  batch_size_lon: 8
 
 
 

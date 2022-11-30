@@ -75,7 +75,7 @@ def make_model(cfg, data):
 
     # Instantiate gaussian observation likelihood
     likelihood = likelihoods.GaussianLikelihood()
-    likelihood.raw_noise.requires_grad = False
+    # likelihood.raw_noise.requires_grad = False
 
     # Instantiate FaIR-constrained SVGP
     model = ThermalBoxesSVGP(scenario_dataset=data.scenarios,
@@ -105,15 +105,15 @@ def fit(model, data, cfg):
     # Define optimiser and marginal likelihood objective
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg['training']['lr'])
 
-    # Setup progress bar
+    # Setup progress bar and logs dict
     training_iter = tqdm.tqdm(range(cfg['training']['n_epochs']), desc='Iter')
+    logs = defaultdict(list)
 
     for epoch in training_iter:
 
-        # Setup progress bar, display vars and record dictionnary
+        # Setup progress bar and display vars
         batch_iter = tqdm.tqdm(range(n_samples // batch_size), desc='Batch')
         epoch_ell, epoch_kl, epoch_loss = 0, 0, 0
-        logs = defaultdict(list)
 
         for i in batch_iter:
             # Sample batch
@@ -149,7 +149,7 @@ def fit(model, data, cfg):
             logs['kl'].append(kl_divergence.detach().cpu().item())
             logs['elbo'].append(-loss.detach().cpu().item())
 
-            if i > 100:
+            if i > 300:
                 break
 
     return model, logs
