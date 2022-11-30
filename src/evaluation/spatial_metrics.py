@@ -29,7 +29,7 @@ def compute_calib95_ICI(xr_groundtruth, xr_mean, xr_stddev):
     # Compute 95% calibration score
     lb, ub = dist.icdf(torch.tensor(0.025)), dist.icdf(torch.tensor(0.975))
     mask = (gt >= lb) & (gt <= ub)
-    calib95 = mask.float().mean()
+    calib95 = mask.float().mean().item()
 
     # Compute integral calibration index
     cr_sizes = np.arange(0.05, 1.0, 0.05)
