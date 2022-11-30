@@ -67,10 +67,10 @@ def make_model(cfg, data):
     FaIR_model = FaIR_model.to(data.S0.device)
 
     # Instantiate kernel for GP prior over forcing
-    k_t = kernels.MaternKernel(nu=0.5, active_dims=[0])
+    k_t = kernels.ScaleKernel(kernels.MaternKernel(nu=0.5, active_dims=[0]))
     k_E = kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[1, 2, 3, 4])
     kernel = k_E + k_t
-    klat = kernels.MaternKernel(nu=1.5)
+    klat = kernels.ScaleKernel(kernels.MaternKernel(nu=1.5))
     klon = kernels.MaternKernel(nu=1.5)
 
     # Instantiate gaussian observation likelihood
