@@ -46,9 +46,12 @@ def load_response_dataset(filepath):
 def make_input_array(xr_input, xr_output):
     latitude = xr_input.latitude
     longitude = xr_input.longitude
-    xr_input['CO2'] = xr_input.CO2.expand_dims(latitude=latitude, longitude=longitude).transpose('time', 'latitude', 'longitude')
-    xr_input['CH4'] = xr_input.CH4.expand_dims(latitude=latitude, longitude=longitude).transpose('time', 'latitude', 'longitude')
-    xr_input['tas'] = xr_output.tas.mean(['member'])
+    try:
+        xr_input['CO2'] = xr_input.CO2.expand_dims(latitude=latitude, longitude=longitude).transpose('time', 'latitude', 'longitude')
+        xr_input['CH4'] = xr_input.CH4.expand_dims(latitude=latitude, longitude=longitude).transpose('time', 'latitude', 'longitude')
+        xr_input['tas'] = xr_output.tas.mean(['member'])
+    except ValueError:
+        pass
     return xr_input
 
 

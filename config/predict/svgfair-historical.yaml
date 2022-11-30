@@ -1,0 +1,44 @@
+################################################################################
+#   CONFIGURATIONS FOR PREDICTICTION OVER SSP245 USING  SVGFAIR PROCESS
+################################################################################
+
+# PREDICTION SPECS
+evaluation:
+  # Path to data directory
+  dirpath: data/
+
+  # Key of scenario to predict over
+  key: historical
+
+  # Time indices to predict over
+  time_idx:
+    start: 20
+    end: 23
+
+  # Latitude indices to predict over - full map = (0, 96)
+  lat_idx:
+    start: 0
+    end: 96
+
+  # Longitude indices to predict over - full map = (0, 144)
+  lon_idx:
+    start: 0
+    end: 144
+
+  # Plots specifications
+  plot:
+    # Specification of tryptych plot
+    tryptych:
+      # Time indices to plot tryptych over - 0 = first step of time_idx
+      indices:
+        - 0
+        - 1
+    # Specification of time serie plot
+    timeserie:
+      # Time indices to plot timeserie over - 0 = first step of time_idx
+      indices:
+        - 0
+        - 1
+        - 2
+        # - 3
+        # - 4

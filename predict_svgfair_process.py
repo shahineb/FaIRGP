@@ -7,6 +7,7 @@ Options:
   --cfg=<path_to_config>           Path to YAML configuration file to use.
   --model=<path_to_model_dir>      Path to model to use. Output of fit_svgfair_process.py.
   --o=<output_dir>                 Output directory.
+  --plot                           Outputs plots.
   --device=<device_index>          Device to use [default: cpu]
 """
 import os
@@ -66,18 +67,21 @@ def load_model(args, model_cfg):
 
 def load_test_scenario(cfg):
     # Load emissions and temperature response xarrays
-    keys = ['historical', cfg['evaluation']['key']]
-    inputs_filepaths = {key: os.path.join(cfg['evaluation']['dirpath'], f"inputs_{key}.nc") for key in keys}
-    outputs_filepaths = {key: os.path.join(cfg['evaluation']['dirpath'], f"outputs_{key}.nc") for key in keys}
+    key = cfg['evaluation']['key']
+    inputs_filepaths = {key: os.path.join(cfg['evaluation']['dirpath'], f"inputs_{key}.nc")}
+    outputs_filepaths = {key: os.path.join(cfg['evaluation']['dirpath'], f"outputs_{key}.nc")}
     input_xarrays = {key: load_emissions_dataset(filepath) for (key, filepath) in inputs_filepaths.items()}
     output_xarrays = {key: load_response_dataset(filepath) for (key, filepath) in outputs_filepaths.items()}
 
-    # Load historical emissions and temperature response xarray
-    input_xarrays.update(historical=load_emissions_dataset(os.path.join(cfg['evaluation']['dirpath'], 'inputs_historical.nc')))
-    output_xarrays.update(historical=load_response_dataset(os.path.join(cfg['evaluation']['dirpath'], 'outputs_historical.nc')))
+    if cfg['evaluation']['key'] == 'historical':
+        hist_scenario = None
+    else:
+        # Load historical emissions and temperature response xarray
+        input_xarrays.update(historical=load_emissions_dataset(os.path.join(cfg['evaluation']['dirpath'], 'inputs_historical.nc')))
+        output_xarrays.update(historical=load_response_dataset(os.path.join(cfg['evaluation']['dirpath'], 'outputs_historical.nc')))
 
-    # Create historical scenario instances
-    hist_scenario = make_scenario(key='historical', inputs=input_xarrays, outputs=output_xarrays)
+        # Create historical scenario instances
+        hist_scenario = make_scenario(key='historical', inputs=input_xarrays, outputs=output_xarrays)
 
     # Create test scenario
     test_scenario = make_scenario(key=cfg['evaluation']['key'], inputs=input_xarrays, outputs=output_xarrays, hist_scenario=hist_scenario)
@@ -135,7 +139,7 @@ def compute_scores(pred):
     rmse = metrics.weighted_rmse(pred.groundtruth, pred.posterior_mean)
 
     # Compute weighted NLL
-    nll = metrics.weighted_nll(pred.groundtruth, pred.posterior_mean)
+    nll = metrics.weighted_nll(pred.groundtruth, pred.posterior_mean, pred.posterior_stddev)
 
     # Compute calibration scores
     ICI, calib95 = metrics.compute_calib95_ICI(pred.groundtruth, pred.posterior_mean, pred.posterior_stddev)
@@ -163,13 +167,11 @@ def dump_plots(pred, cfg, output_dir):
         plt.close()
 
     # Plot timeserie
-    dump_path = os.path.join(output_dir, "timeserie.jpg")]
+    dump_path = os.path.join(output_dir, "timeserie.jpg")
     ts_indices = cfg['evaluation']['plot']['timeserie']['indices']
     fig, ax = vis.plot_timeserie_maps(pred.prior_mean.isel(time=ts_indices))
     plt.savefig(dump_path)
     plt.close()
-
-
 
 
 if __name__ == "__main__":

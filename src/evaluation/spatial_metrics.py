@@ -40,5 +40,5 @@ def compute_calib95_ICI(xr_groundtruth, xr_mean, xr_stddev):
         lb, ub = dist.icdf(torch.tensor(q_lb)), dist.icdf(torch.tensor(q_ub))
         mask = (gt >= lb) & (gt <= ub)
         calibs.append(mask.float().mean().item())
-    ICI = np.abs(np.asarray(calibs) - cr_sizes).mean()
+    ICI = np.abs(np.asarray(calibs) - cr_sizes).mean().item()
     return ICI, calib95
