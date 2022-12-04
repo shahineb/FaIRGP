@@ -7,6 +7,7 @@ from cartopy.util import add_cyclic_point
 import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.cm import ScalarMappable
 params = {
     'text.latex.preamble': ['\\usepackage{gensymb}'],
     'text.usetex': False,
@@ -93,12 +94,11 @@ def plot_contourf_on_ax(field, fig, ax, levels=20, cmap='RdBu_r', vmax=None, tit
                                            axis=field.dims.index('lon'))
     if not vmax:
         vmax = np.abs(wrap_data).max()
+    levels = np.linspace(-vmax.round(), vmax.round(), levels)
     cx = ax.contourf(wrap_lon,
                      field.lat,
                      wrap_data,
                      levels=levels,
-                     vmax=vmax,
-                     vmin=-vmax,
                      cmap=cmap,
                      transform=ccrs.PlateCarree())
     ax.set_global()

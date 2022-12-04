@@ -250,16 +250,16 @@ def sample_scenario(scenario_dataset, seed=None):
 def sample_indices(scenario, n_time, n_lat, n_lon, seed=None):
     if seed:
         torch.random.manual_seed(seed)
-    # time_idx = torch.randperm(len(scenario.timesteps))[:n_time]
-    # lat_idx = torch.randperm(len(scenario.lat))[:n_lat]
-    # lon_idx = torch.randperm(len(scenario.lon))[:n_lon]
+    time_idx, _ = torch.sort(torch.randperm(len(scenario.timesteps))[:n_time])
+    lat_idx = torch.randperm(len(scenario.lat))[:n_lat]
+    lon_idx = torch.randperm(len(scenario.lon))[:n_lon]
 
-    time_idx = torch.randperm(len(scenario.timesteps) - n_time + 1)[0]
-    time_idx = torch.arange(time_idx, time_idx + n_time)
-    lat_idx = torch.randperm(len(scenario.lat) - n_lat + 1)[0]
-    lat_idx = torch.arange(lat_idx, lat_idx + n_lat)
-    lon_idx = torch.randperm(len(scenario.lon) - n_lon + 1)[0]
-    lon_idx = torch.arange(lon_idx, lon_idx + n_lon)
+    # time_idx = torch.randperm(len(scenario.timesteps) - n_time + 1)[0]
+    # time_idx = torch.arange(time_idx, time_idx + n_time)
+    # lat_idx = torch.randperm(len(scenario.lat) - n_lat + 1)[0]
+    # lat_idx = torch.arange(lat_idx, lat_idx + n_lat)
+    # lon_idx = torch.randperm(len(scenario.lon) - n_lon + 1)[0]
+    # lon_idx = torch.arange(lon_idx, lon_idx + n_lon)
     return time_idx, lat_idx, lon_idx
 
 

@@ -15,7 +15,6 @@ import yaml
 import logging
 from docopt import docopt
 from collections import namedtuple
-import tqdm
 import torch
 import xarray as xr
 import matplotlib.pyplot as plt
@@ -55,12 +54,12 @@ def main(args, cfg, model_cfg):
 def load_model(args, model_cfg):
     # Instantiate training set and model
     data = fit_svgfair.make_data(cfg=model_cfg)
-    model = fit_svgfair.make_model(cfg=model_cfg, data=data)
+    data = fit_svgfair.migrate_to_device(data=data, device=device)
+    model = fit_svgfair.make_model(cfg=model_cfg, data=data).to(device)
 
     # Load model weights
     logging.info("Loading state dict")
-    state_dict = torch.load(os.path.join(args['--model'], 'state_dict.pt'),
-                            map_location=lambda storage, loc: storage)
+    state_dict = torch.load(os.path.join(args['--model'], 'state_dict.pt'), map_location=device)
     model.load_state_dict(state_dict)
     return model
 
@@ -85,7 +84,7 @@ def load_test_scenario(cfg):
 
     # Create test scenario
     test_scenario = make_scenario(key=cfg['evaluation']['key'], inputs=input_xarrays, outputs=output_xarrays, hist_scenario=hist_scenario)
-    return test_scenario
+    return test_scenario.to(device)
 
 
 def predict(model, scenario, cfg):
@@ -126,11 +125,11 @@ def predict(model, scenario, cfg):
 
 
 def encapsulate_as_xarray(data, scenario, time_idx, lat_idx, lon_idx):
-    field = xr.DataArray(data=data,
+    field = xr.DataArray(data=data.cpu(),
                          dims=['time', 'lat', 'lon'],
-                         coords=dict(time=scenario.timesteps[time_idx],
-                                     lat=scenario.lat[lat_idx],
-                                     lon=scenario.lon[lon_idx]))
+                         coords=dict(time=scenario.timesteps[time_idx].cpu(),
+                                     lat=scenario.lat[lat_idx].cpu(),
+                                     lon=scenario.lon[lon_idx].cpu()))
     return field
 
 
@@ -169,7 +168,7 @@ def dump_plots(pred, cfg, output_dir):
     # Plot timeserie
     dump_path = os.path.join(output_dir, "timeserie.jpg")
     ts_indices = cfg['evaluation']['plot']['timeserie']['indices']
-    fig, ax = vis.plot_timeserie_maps(pred.prior_mean.isel(time=ts_indices))
+    fig, ax = vis.plot_timeserie_maps(pred.posterior_mean.isel(time=ts_indices))
     plt.savefig(dump_path)
     plt.close()
 

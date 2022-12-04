@@ -142,15 +142,15 @@ def fit(model, data, cfg):
             batch_iter.set_postfix_str(f"ELL {epoch_ell / (i + 1):e} | KL {epoch_kl / (i + 1):e} | Loss {epoch_loss / (i + 1):e}")
 
             # Record batch losses values
-            logs['alpha'].append(α.detach().cpu().item())
-            logs['beta'].append(β.detach().cpu().item())
-            logs['gamma'].append(γ.detach().cpu().item())
+            logs['alpha'].append(α.div(batch_size).detach().cpu().item())
+            logs['beta'].append(β.div(batch_size).detach().cpu().item())
+            logs['gamma'].append(γ.div(batch_size).detach().cpu().item())
             logs['ell'].append(ell.detach().cpu().item())
             logs['kl'].append(kl_divergence.detach().cpu().item())
             logs['elbo'].append(-loss.detach().cpu().item())
 
-            if i > 300:
-                break
+            # if i > 300:
+            #     break
 
     return model, logs
 
