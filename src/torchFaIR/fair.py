@@ -125,7 +125,7 @@ class FaIR(nn.Module):
         # g0, g1 in format [species]
         g0, g1 = self.calculate_g()
         for i, dt in enumerate(timestep):
-            S_old = S_ts[-1] if S_ts else S0
+            S_old = S_ts[-1] if S_ts else torch.zeros_like(S0)
             glob_T = S_old.sum(dim=0).mul(weights.view(-1, 1)).sum().div(weights.sum() * S_old.size(-1))
             alpha = self.calculate_alpha(G=G, G_A=G_A, T=glob_T, g0=g0, g1=g1)
             C, R, G_A = self.step_concentration(emissions=inp_ar[:, i],
@@ -146,8 +146,8 @@ class FaIR(nn.Module):
             glob_T_ts.append(glob_T)
         res = {"C": torch.stack(C_ts),
                "RF": torch.stack(RF_ts),
-               "T": torch.stack(T_ts),
+               "T": torch.stack(T_ts).add(S0.sum(dim=0)),
                "glob_T": torch.stack(glob_T_ts),
-               "S": torch.stack(S_ts),
+               "S": torch.stack(S_ts).add(S0),
                "alpha": torch.stack(alpha_ts)}
         return res
