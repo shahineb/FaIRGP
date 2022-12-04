@@ -72,11 +72,11 @@ def make_data(cfg):
     fair_kwargs = get_fair_params()
 
     # Load initial S0 map
-    S0 = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'S0_map.npy'))).double()[:, :64][..., :64]
+    S0 = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'S0_map.npy'))).double()
 
     # Load d and q maps
-    d_map = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'd_maps.npy'))).double()[:, :64][..., :64]
-    q_map = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'q_maps.npy'))).double()[:, :64][..., :64]
+    d_map = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'd_maps.npy'))).double()
+    q_map = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'q_maps.npy'))).double()
 
     # Create inducing scenario
     cfg_inducing = cfg['model']['inducing_scenario']
