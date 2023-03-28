@@ -48,7 +48,9 @@ def migrate_to_device(data, device):
 
 def make_model(cfg, data):
     # Instantiate kernel for GP prior over forcing
-    kernel = kernels.MaternKernel(nu=1.5, ard_num_dims=5, active_dims=[0, 1, 2, 3, 4])
+    forcing_kernel = kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[1, 2, 3, 4])
+    ou_kernel = kernels.ScaleKernel(kernels.MaternKernel(nu=0.5, ard_num_dims=1, active_dims=[0]))
+    kernel = forcing_kernel + ou_kernel
 
     # Instantiate gaussian observation likelihood
     likelihood = likelihoods.GaussianLikelihood()

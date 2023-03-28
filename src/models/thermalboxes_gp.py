@@ -46,22 +46,21 @@ class ThermalBoxesGP(GP):
         return means
 
     def _compute_covariance(self, scenario_dataset):
-        I = compute_I(scenario_dataset, self.kernel, self.d)
+        I = compute_I(scenario_dataset, self.kernel, self.q, self.d)
         Kj = compute_covariance(scenario_dataset, I, self.q, self.d)
+        Kj = gpytorch.add_jitter(Kj)
         return Kj
 
     def train_prior_dist(self):
-        Kj = self._compute_covariance(self.train_scenarios)
         train_mean = torch.zeros_like(self.train_scenarios.tas)
-        train_covar = gpytorch.add_jitter(Kj.sum(dim=-1))
+        train_covar = self._compute_covariance(self.train_scenarios)
         train_prior_dist = distributions.MultivariateNormal(train_mean, train_covar)
         train_prior_dist = self.likelihood(train_prior_dist)
         return train_prior_dist
 
     def forward(self, scenario_dataset):
         mean = torch.zeros_like(scenario_dataset.tas)
-        Kj = self._compute_covariance(scenario_dataset)
-        covar = gpytorch.add_jitter(Kj.sum(dim=-1))
+        covar = self._compute_covariance(scenario_dataset)
         prior_dist = distributions.MultivariateNormal(mean, covar)
         return prior_dist
 

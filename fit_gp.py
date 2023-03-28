@@ -49,7 +49,7 @@ def migrate_to_device(data, device):
 def make_model(cfg, data):
     # Instantiate mean and kernel
     mean = means.ZeroMean()
-    kernel = kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[0, 1, 2, 3])
+    kernel = kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[1, 2, 3, 4])
 
     # Instantiate gaussian observation likelihood
     likelihood = likelihoods.GaussianLikelihood()

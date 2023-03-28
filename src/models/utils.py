@@ -22,14 +22,14 @@ def compute_means(scenario_dataset):
     return means
 
 
-def compute_I(scenario_dataset, kernel, d):
-    I = [compute_I_scenario(scenario_dataset, scenario, kernel, d)
+def compute_I(scenario_dataset, kernel, q, d):
+    I = [compute_I_scenario(scenario_dataset, scenario, kernel, q, d)
          for scenario in scenario_dataset.scenarios.values()]
     I = torch.cat(I, dim=-2)
     return I
 
 
-def compute_I_scenario(scenario_dataset, scenario, kernel, d):
+def compute_I_scenario(scenario_dataset, scenario, kernel, q, d):
     mu, sigma = scenario_dataset.mu_inputs, scenario_dataset.sigma_inputs
     scenario_emissions_std = (scenario.full_inputs - mu) / sigma
     dataset_emissions_std = (scenario_dataset.full_inputs - mu) / sigma
@@ -39,16 +39,21 @@ def compute_I_scenario(scenario_dataset, scenario, kernel, d):
     for t in range(1, len(scenario_emissions_std)):
         I_old = I[:, t - 1]
         K_new = K[:, t]
-        I_new = step_I(I_old, K_new, d.unsqueeze(0))
+        I_new = step_I(I_old, K_new, q.unsqueeze(0), d.unsqueeze(0))
         I[:, t] = I_new.squeeze()
     return I
 
 
 def compute_covariance(scenario_dataset, I, q, d):
+    nboxes = len(q)
+    I = I[..., None].repeat(1, 1, 1, nboxes).view(I.size(0), I.size(1), -1)
+    d = d.repeat(nboxes)
+    q = q.repeat(nboxes)
     Kj = [compute_covariance_scenario(scenario_dataset, scenario, I, q, d)
           for scenario in scenario_dataset.scenarios.values()]
     Kj = torch.cat(Kj, dim=-2)
-    Kj = scenario_dataset.trim_hist(Kj)
+    Kj = scenario_dataset.trim_hist(Kj).sum(dim=-1)
+    Kj = 0.5 * (Kj + Kj.T)
     return Kj
 
 

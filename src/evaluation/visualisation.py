@@ -86,15 +86,17 @@ def plot_contourf_with_zonal_avg(field, title="", levels=20, fontsize=14):
     return fig, (mapax, plotax, barax), cx
 
 
-def plot_contourf_on_ax(field, fig, ax, levels=20, cmap='RdBu_r', vmax=None, title="", fontsize=14, colorbar=False):
+def plot_contourf_on_ax(field, fig, ax, levels=20, cmap='RdBu_r', vmax=None, vmin=None, title="", fontsize=14, colorbar=False):
     '''input field should be a 2D xarray.DataArray on a lat/lon grid.
     '''
     wrap_data, wrap_lon = add_cyclic_point(field.values,
                                            coord=field.lon,
                                            axis=field.dims.index('lon'))
-    if not vmax:
+    if vmax is None:
         vmax = np.abs(wrap_data).max()
-    levels = np.linspace(-vmax.round(), vmax.round(), levels)
+    if vmin is None:
+        vmin = -vmax
+    levels = np.linspace(vmin, vmax, levels)
     cx = ax.contourf(wrap_lon,
                      field.lat,
                      wrap_data,
