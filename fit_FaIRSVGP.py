@@ -1,7 +1,7 @@
 """
 Description : Fits FaIR-contrained SVGP for spatial temperature response emulation
 
-Usage: fit_svgfair_process.py  [options] --cfg=<path_to_config> --o=<output_dir>
+Usage: fit_FaIRSVGP.py  [options] --cfg=<path_to_config> --o=<output_dir>
 
 Options:
   --cfg=<path_to_config>           Path to YAML configuration file to use.

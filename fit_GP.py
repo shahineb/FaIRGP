@@ -1,7 +1,7 @@
 """
 Description : Fits GP for global temperature response emulation
 
-Usage: fit_gp.py  [options] --cfg=<path_to_config> --o=<output_dir>
+Usage: fit_GP.py  [options] --cfg=<path_to_config> --o=<output_dir>
 
 Options:
   --cfg=<path_to_config>           Path to YAML configuration file to use.
@@ -49,7 +49,7 @@ def migrate_to_device(data, device):
 def make_model(cfg, data):
     # Instantiate mean and kernel
     mean = means.ZeroMean()
-    kernel = kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[1, 2, 3, 4])
+    kernel = kernels.ScaleKernel(kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[0, 1, 2, 3]))
 
     # Instantiate gaussian observation likelihood
     likelihood = likelihoods.GaussianLikelihood()

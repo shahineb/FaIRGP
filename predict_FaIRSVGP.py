@@ -1,7 +1,7 @@
 """
 Description : Runs inference with FaIR-contrained SVGP for spatial temperature response emulation
 
-Usage: predict_svgfair_process.py  [options] --model=<model_output_dir> --cfg=<path_to_config> --o=<output_dir>
+Usage: predict_FaIRSVGP.py  [options] --model=<model_output_dir> --cfg=<path_to_config> --o=<output_dir>
 
 Options:
   --cfg=<path_to_config>           Path to YAML configuration file to use.
@@ -18,7 +18,7 @@ from collections import namedtuple
 import torch
 import xarray as xr
 import matplotlib.pyplot as plt
-import fit_svgfair_process as fit_svgfair
+import fit_FaIRSVGP as fit_svgfair
 from src.preprocessing.spatial.preprocess_data import load_emissions_dataset, load_response_dataset, make_scenario
 import src.evaluation.spatial_metrics as metrics
 import src.evaluation.visualisation as vis

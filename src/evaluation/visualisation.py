@@ -4,16 +4,10 @@ import torch
 import numpy as np
 import cartopy.crs as ccrs
 from cartopy.util import add_cyclic_point
-import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.cm import ScalarMappable
-params = {
-    'text.latex.preamble': ['\\usepackage{gensymb}'],
-    'text.usetex': False,
-    'font.family': 'serif',
-}
-matplotlib.rcParams.update(params)
+import scienceplots
+plt.style.use('science')
 
 base_dir = os.path.join(os.getcwd(), '../..')
 sys.path.append(base_dir)
@@ -44,14 +38,15 @@ def plot_scenario_prediction(posterior_dist, test_scenarios, model):
 
     posterior_lb, posterior_ub = posterior_dist.confidence_region()
 
-    fig, ax = plt.subplots(1, 1, figsize=(12, 6))
-    ax.plot(test_times, test_tas, color='cornflowerblue', label=test_scenarios.names[0])
-    ax.plot(test_times, test_tas_fair, color='tomato', ls='--', lw=3, label='FaIR')
-    ax.plot(test_times, posterior_dist.mean, color='orange', label='Posterior mean')
-    ax.fill_between(test_times, posterior_lb, posterior_ub, alpha=0.5, color='orange', label='Confidence region')
-    ax.set_ylabel('Temperature anomaly (K)')
+    fig, ax = plt.subplots(1, 1, figsize=(15, 6))
+    ax.plot(test_times, test_tas, color='cornflowerblue', lw=4, label=test_scenarios.names[0])
+    ax.plot(test_times, test_tas_fair, color='tomato', ls='--', lw=5, label='FaIR')
+    ax.plot(test_times, posterior_dist.mean, color='orange', lw=7, label='Posterior mean')
+    ax.fill_between(test_times, posterior_lb, posterior_ub, alpha=0.3, color='orange', label='Confidence region')
+    ax.tick_params(labelsize=16)
+    ax.set_ylabel('Temperature anomaly (K)', fontsize=22)
     ax.grid(alpha=0.5)
-    ax.legend()
+    ax.legend(fontsize=20)
     plt.tight_layout()
     return fig, ax
 
