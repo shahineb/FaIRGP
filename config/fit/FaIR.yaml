@@ -1,5 +1,5 @@
 ################################################################################
-#   CONFIGURATIONS FOR FITTING GFAIR PROCESS
+#   CONFIGURATIONS FOR FITTING FaIR
 ################################################################################
 
 # DATASET
@@ -10,7 +10,7 @@ dataset:
   # Keys of scenearios to load
   keys:
     - historical
-    # - ssp126
+    - ssp126
     - ssp245
     - ssp370
     - ssp585
@@ -24,14 +24,6 @@ model:
 
 # TRAINING
 training:
-  # Number of training epochs
-  n_epochs: 60
-  # n_epochs: 2
-
-  # Learning rate
-  lr: 0.1
-
-
 
 # EVALUATION
 evaluation:

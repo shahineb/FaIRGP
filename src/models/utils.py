@@ -67,3 +67,25 @@ def compute_covariance_scenario(scenario_dataset, scenario, I, q, d):
         Kj[t] = Kj_new
     Kj = scenario.trim_hist(Kj)
     return Kj.permute(1, 0, 2)
+
+
+def compute_mF(scenario_dataset):
+    base_kwargs = fair.get_params()
+    means = dict()
+    for name, scenario in scenario_dataset.scenarios.items():
+        res = fair.run(scenario.full_timesteps.numpy(),
+                       scenario.full_emissions.T.numpy(),
+                       base_kwargs)
+        mF = torch.from_numpy(res['RF'].sum(axis=0)).float()
+        mF = scenario_dataset.trim_hist(mF)
+        means.update({scenario: mF})
+    return means
+
+
+def compute_kFT(scenario_dataset_F, scenario_dataset_T, kernel, q, d):
+    full_scenario_dataset = scenario_dataset_T + scenario_dataset_F
+    kFT = compute_I(full_scenario_dataset, kernel, q, d).sum(dim=-1)
+    kFT = full_scenario_dataset.trim_hist(kFT)
+    kFT = full_scenario_dataset.trim_hist(kFT.T).T
+    kFT = kFT[len(scenario_dataset_T.timesteps):, :len(scenario_dataset_T.timesteps)]
+    return kFT

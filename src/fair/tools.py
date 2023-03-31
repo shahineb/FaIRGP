@@ -67,7 +67,7 @@ def step_temperature(S_old, F, q, d, dt=1):
 def step_I(I_old, K, q, d, dt=1):
     """Takes next time step to construct recursively the I matrix where
 
-        I_{i,j} = ∫K(ti, s)exp(-(tj-s)/d)ds from 0 to tj
+        I_{i,j} = (q/d)∫K(ti, s)exp(-(tj-s)/d)ds from 0 to tj
 
     Rows fix the timestep inside K(ti, s) and colums determine the exponential term and
     integration bounds.
