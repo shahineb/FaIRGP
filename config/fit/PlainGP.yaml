@@ -10,10 +10,10 @@ dataset:
   # Keys of scenearios to load
   keys:
     - historical
-    # - ssp126
-    # - ssp245
-    # - ssp370
-    # - ssp585
+    - ssp126
+    - ssp245
+    - ssp370
+    - ssp585
 
 
 

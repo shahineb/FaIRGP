@@ -77,7 +77,7 @@ def compute_mF(scenario_dataset):
                        scenario.full_emissions.T.numpy(),
                        base_kwargs)
         mF = torch.from_numpy(res['RF'].sum(axis=0)).float()
-        mF = scenario_dataset.trim_hist(mF)
+        mF = scenario.trim_hist(mF)
         means.update({scenario: mF})
     return means
 
