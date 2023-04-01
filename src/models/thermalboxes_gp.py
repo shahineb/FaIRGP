@@ -3,7 +3,7 @@ import gpytorch
 from gpytorch import settings, distributions
 from gpytorch.models import GP
 from .exact_prediction_strategy import prediction_strategy
-from .utils import compute_means, compute_I, compute_covariance
+from .utils import compute_means, compute_I, compute_covariance, compute_mF, compute_kFT
 
 
 class ThermalBoxesGP(GP):
@@ -46,24 +46,53 @@ class ThermalBoxesGP(GP):
         return means
 
     def _compute_covariance(self, scenario_dataset):
-        I = compute_I(scenario_dataset, self.kernel, self.d)
-        Kj = compute_covariance(scenario_dataset, I, self.q, self.d)
-        return Kj
+        I = compute_I(scenario_dataset, self.kernel, self.q, self.d)
+        covar = compute_covariance(scenario_dataset, I, self.q, self.d)
+        covar = gpytorch.add_jitter(covar)
+        return covar
 
     def train_prior_dist(self):
-        Kj = self._compute_covariance(self.train_scenarios)
         train_mean = torch.zeros_like(self.train_scenarios.tas)
-        train_covar = gpytorch.add_jitter(Kj.sum(dim=-1))
+        train_covar = self._compute_covariance(self.train_scenarios)
         train_prior_dist = distributions.MultivariateNormal(train_mean, train_covar)
-        train_prior_dist = self.likelihood(train_prior_dist)
         return train_prior_dist
 
     def forward(self, scenario_dataset):
         mean = torch.zeros_like(scenario_dataset.tas)
-        Kj = self._compute_covariance(scenario_dataset)
-        covar = gpytorch.add_jitter(Kj.sum(dim=-1))
+        covar = self._compute_covariance(scenario_dataset)
         prior_dist = distributions.MultivariateNormal(mean, covar)
         return prior_dist
+
+    def _compute_forcing_mean(self, scenario_dataset):
+        mFs = compute_mF(scenario_dataset)
+        mF = torch.cat([v for v in mFs.values()])
+        return mF
+
+    def forcing_posterior(self, test_scenarios):
+        mF = self._compute_forcing_mean(test_scenarios)
+
+        mu, sigma = self.train_scenarios.mu_inputs, self.train_scenarios.sigma_inputs
+        test_scenario_emissions_std = (test_scenarios.inputs - mu) / sigma
+        kFF = self.kernel(test_scenario_emissions_std).evaluate()
+
+        kFT = compute_kFT(test_scenarios, self.train_scenarios, self.kernel, self.q, self.d)
+
+        covar = self._compute_covariance(self.train_scenarios)
+        covar = covar + self.likelihood.compute_covariance(covar.size(0))
+        chol = torch.linalg.cholesky(gpytorch.add_jitter(covar))
+        kFT_covarinv = torch.cholesky_solve(kFT.T, chol).T
+
+        posterior_mF = mF + kFT_covarinv @ self.train_targets
+        posterior_kFF = kFF - kFT_covarinv @ kFT.T
+        posterior_kFF = gpytorch.add_jitter(posterior_kFF)
+
+        while True:
+            try:
+                posterior_F = distributions.MultivariateNormal(posterior_mF, posterior_kFF)
+                break
+            except torch._C._LinAlgError:
+                posterior_kFF = gpytorch.add_jitter(posterior_kFF)
+        return posterior_F
 
     def __call__(self, *args, **kwargs):
         # Training mode: optimizing

@@ -1,7 +1,7 @@
 """
 Description : Fits FaIR-contrained GP for global temperature response emulation
 
-Usage: fit_gfair_process.py  [options] --cfg=<path_to_config> --o=<output_dir>
+Usage: fit_FaIRGP.py  [options] --cfg=<path_to_config> --o=<output_dir>
 
 Options:
   --cfg=<path_to_config>           Path to YAML configuration file to use.
@@ -14,9 +14,10 @@ import logging
 from docopt import docopt
 import tqdm
 import torch
-from gpytorch import kernels, likelihoods, mlls
+from gpytorch import kernels, mlls
 from src.preprocessing.glob import make_data
 from src.models import ThermalBoxesGP
+from src.likelihoods import InternalVariability
 from src.evaluation import dump_state_dict
 
 
@@ -48,10 +49,10 @@ def migrate_to_device(data, device):
 
 def make_model(cfg, data):
     # Instantiate kernel for GP prior over forcing
-    kernel = kernels.MaternKernel(nu=1.5, ard_num_dims=5, active_dims=[0, 1, 2, 3, 4])
+    kernel = kernels.ScaleKernel(kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[1, 2, 3, 4]))
 
-    # Instantiate gaussian observation likelihood
-    likelihood = likelihoods.GaussianLikelihood()
+    # Instantiate internal variability likelihood module
+    likelihood = InternalVariability(q=data.fair_kwargs['q'], d=data.fair_kwargs['d'])
 
     # Instantiate FaIR-constrained GP
     model = ThermalBoxesGP(scenario_dataset=data.scenarios,

@@ -29,28 +29,40 @@ class FaIR(nn.Module):
         self.a2 = nn.Parameter(torch.from_numpy(a2))
         self.a3 = nn.Parameter(torch.from_numpy(a3))
         self.a4 = nn.Parameter(torch.from_numpy(a4))
-        self.a = torch.stack([self.a1, self.a2, self.a3, self.a4], dim=0)
 
         self.tau1 = nn.Parameter(torch.from_numpy(tau1))
         self.tau2 = nn.Parameter(torch.from_numpy(tau2))
         self.tau3 = nn.Parameter(torch.from_numpy(tau3))
         self.tau4 = nn.Parameter(torch.from_numpy(tau4))
-        self.tau = torch.stack([self.tau1, self.tau2, self.tau3, self.tau4], dim=0)
 
         self.r0 = nn.Parameter(torch.from_numpy(r0))
         self.rC = nn.Parameter(torch.from_numpy(rC))
         self.rT = nn.Parameter(torch.from_numpy(rT))
         self.rA = nn.Parameter(torch.from_numpy(rA))
-        self.r = torch.stack([self.r0, self.rC, self.rT, self.rA], dim=0)
 
         self.f1 = nn.Parameter(torch.from_numpy(f1).float())
         self.f2 = nn.Parameter(torch.from_numpy(f2).float())
         self.f3 = nn.Parameter(torch.from_numpy(f3).float())
-        self.f = torch.stack([self.f1, self.f2, self.f3], dim=0)
 
         self.register_buffer('forcing_pattern', torch.from_numpy(forcing_pattern).float())
         self.register_buffer('PI_conc', torch.from_numpy(PI_conc).float())
         self.register_buffer('emis2conc', torch.from_numpy(emis2conc).float())
+
+    @property
+    def tau(self):
+        return torch.stack([self.tau1, self.tau2, self.tau3, self.tau4], dim=0)
+
+    @property
+    def a(self):
+        return torch.stack([self.a1, self.a2, self.a3, self.a4], dim=0)
+
+    @property
+    def r(self):
+        return torch.stack([self.r1, self.r2, self.r3, self.r4], dim=0)
+
+    @property
+    def f(self):
+        return torch.stack([self.f1, self.f2, self.f3, self.f4], dim=0)
 
     def calculate_g(self):
         g1 = torch.sum(self.a * self.tau * (1 - (1 + 100 / self.tau) * torch.exp(-100 / self.tau)), dim=0)
@@ -106,14 +118,14 @@ class FaIR(nn.Module):
         # both in the same units as emissions
         # So at any point, G - G_A is equal
         # to the amount of a species that has been absorbed
-        G_A, G = torch.zeros((2, n_species))
+        G_A, G = torch.zeros((2, n_species)).to(inp_ar.device)
         # R in format [[index],[species]]
-        R = torch.zeros((4, n_species))
+        R = torch.zeros((4, n_species)).to(inp_ar.device)
         # a,tau in format [[index], [species]]
         # g0, g1 in format [species]
         g0, g1 = self.calculate_g()
         for i, dt in enumerate(timestep):
-            S_old = S_ts[-1] if S_ts else S0
+            S_old = S_ts[-1] if S_ts else torch.zeros_like(S0)
             glob_T = S_old.sum(dim=0).mul(weights.view(-1, 1)).sum().div(weights.sum() * S_old.size(-1))
             alpha = self.calculate_alpha(G=G, G_A=G_A, T=glob_T, g0=g0, g1=g1)
             C, R, G_A = self.step_concentration(emissions=inp_ar[:, i],
@@ -134,8 +146,8 @@ class FaIR(nn.Module):
             glob_T_ts.append(glob_T)
         res = {"C": torch.stack(C_ts),
                "RF": torch.stack(RF_ts),
-               "T": torch.stack(T_ts),
+               "T": torch.stack(T_ts).add(S0.sum(dim=0)),
                "glob_T": torch.stack(glob_T_ts),
-               "S": torch.stack(S_ts),
+               "S": torch.stack(S_ts).add(S0),
                "alpha": torch.stack(alpha_ts)}
         return res

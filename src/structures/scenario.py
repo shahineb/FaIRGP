@@ -343,6 +343,14 @@ class Scenario(nn.Module):
     def glob_hist_tas(self):
         return self.hist_scenario.glob_tas
 
+    @property
+    def std_lat(self):
+        return (self.lat + 1.5895e-07) / 52.7813
+
+    @property
+    def std_lon(self):
+        return (self.lon - 178.7500) / 104.2833
+
     @functools.cached_property
     def weights(self):
         return torch.cos(torch.deg2rad(self.lat))
@@ -468,6 +476,76 @@ class Scenario(nn.Module):
                                       self.full_glob_cum_emissions[..., 0, None],
                                       self.full_glob_emissions[..., 1:]], dim=-1)
         return full_glob_inputs
+
+    def _clear_cache(self):
+        try:
+            del self.weights
+        except AttributeError:
+            pass
+        try:
+            del self.glob_emissions
+        except AttributeError:
+            pass
+        try:
+            del self.glob_tas
+        except AttributeError:
+            pass
+        try:
+            del self.full_timesteps
+        except AttributeError:
+            pass
+        try:
+            del self.full_emissions
+        except AttributeError:
+            pass
+        try:
+            del self.full_tas
+        except AttributeError:
+            pass
+        try:
+            del self.full_glob_emissions
+        except AttributeError:
+            pass
+        try:
+            del self.full_glob_tas
+        except AttributeError:
+            pass
+        try:
+            del self.full_cum_emissions
+        except AttributeError:
+            pass
+        try:
+            del self.full_glob_cum_emissions
+        except AttributeError:
+            pass
+        try:
+            del self.full_concentrations
+        except AttributeError:
+            pass
+        try:
+            del self.full_inputs
+        except AttributeError:
+            pass
+        try:
+            del self.cum_emissions
+        except AttributeError:
+            pass
+        try:
+            del self.glob_cum_emissions
+        except AttributeError:
+            pass
+        try:
+            del self.inputs
+        except AttributeError:
+            pass
+        try:
+            del self.glob_inputs
+        except AttributeError:
+            pass
+        try:
+            del self.full_glob_inputs
+        except AttributeError:
+            pass
 
     def __len__(self):
         return len(self.timesteps)

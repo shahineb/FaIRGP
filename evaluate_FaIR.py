@@ -1,7 +1,7 @@
 """
 Description : Runs and evaluates FaIR for global temperature response emulation
 
-Usage: evaluate_fair.py  [options] --cfg=<path_to_config> --o=<output_dir>
+Usage: evaluate_FaIR.py  [options] --cfg=<path_to_config> --o=<output_dir>
 
 Options:
   --cfg=<path_to_config>           Path to YAML configuration file to use.

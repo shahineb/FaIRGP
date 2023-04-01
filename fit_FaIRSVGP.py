@@ -1,7 +1,7 @@
 """
 Description : Fits FaIR-contrained SVGP for spatial temperature response emulation
 
-Usage: fit_svgfair_process.py  [options] --cfg=<path_to_config> --o=<output_dir>
+Usage: fit_FaIRSVGP.py  [options] --cfg=<path_to_config> --o=<output_dir>
 
 Options:
   --cfg=<path_to_config>           Path to YAML configuration file to use.
@@ -47,6 +47,8 @@ def main(args, cfg):
 
 def migrate_to_device(data, device):
     # These are the only tensors needed on device to run this experiment
+    data.scenarios._clear_cache()
+    data.inducing_scenario._clear_cache()
     data = data._replace(scenarios=data.scenarios.to(device),
                          inducing_scenario=data.inducing_scenario.to(device),
                          S0=data.S0.to(device),
@@ -58,21 +60,29 @@ def migrate_to_device(data, device):
 def make_model(cfg, data):
     # Instantiate backbone FaIR model and deactivate training
     forcing_pattern = np.ones((len(data.scenarios[0].lat), len(data.scenarios[0].lon)))  # uniform forcing pattern for now
-    with torch.no_grad():
-        FaIR_model = FaIR(**data.fair_kwargs, forcing_pattern=forcing_pattern)
-        for param in FaIR_model.parameters():
-            param.requires_grad = False
+    # with torch.no_grad():
+    FaIR_model = FaIR(**data.fair_kwargs, forcing_pattern=forcing_pattern)
+    for param in FaIR_model.parameters():
+        param.requires_grad = False
+    FaIR_model = FaIR_model.to(data.S0.device)
 
     # Instantiate kernel for GP prior over forcing
-    kernel = kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[1, 2, 3, 4])
+    k_t = kernels.ScaleKernel(kernels.MaternKernel(nu=0.5, active_dims=[0]))
+    k_E = kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[1, 2, 3, 4])
+    kernel = k_E + k_t
+    klat = kernels.ScaleKernel(kernels.MaternKernel(nu=1.5))
+    klon = kernels.MaternKernel(nu=1.5)
 
     # Instantiate gaussian observation likelihood
     likelihood = likelihoods.GaussianLikelihood()
+    # likelihood.raw_noise.requires_grad = False
 
     # Instantiate FaIR-constrained SVGP
     model = ThermalBoxesSVGP(scenario_dataset=data.scenarios,
                              inducing_scenario=data.inducing_scenario,
                              kernel=kernel,
+                             klat=klat,
+                             klon=klon,
                              likelihood=likelihood,
                              FaIR_model=FaIR_model,
                              S0=data.S0,
@@ -95,15 +105,15 @@ def fit(model, data, cfg):
     # Define optimiser and marginal likelihood objective
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg['training']['lr'])
 
-    # Setup progress bar
+    # Setup progress bar and logs dict
     training_iter = tqdm.tqdm(range(cfg['training']['n_epochs']), desc='Iter')
+    logs = defaultdict(list)
 
     for epoch in training_iter:
 
-        # Setup progress bar, display vars and record dictionnary
+        # Setup progress bar and display vars
         batch_iter = tqdm.tqdm(range(n_samples // batch_size), desc='Batch')
         epoch_ell, epoch_kl, epoch_loss = 0, 0, 0
-        logs = defaultdict(list)
 
         for i in batch_iter:
             # Sample batch
@@ -132,12 +142,15 @@ def fit(model, data, cfg):
             batch_iter.set_postfix_str(f"ELL {epoch_ell / (i + 1):e} | KL {epoch_kl / (i + 1):e} | Loss {epoch_loss / (i + 1):e}")
 
             # Record batch losses values
-            logs['alpha'].append(α.detach().cpu().item())
-            logs['beta'].append(β.detach().cpu().item())
-            logs['gamma'].append(γ.detach().cpu().item())
+            logs['alpha'].append(α.div(batch_size).detach().cpu().item())
+            logs['beta'].append(β.div(batch_size).detach().cpu().item())
+            logs['gamma'].append(γ.div(batch_size).detach().cpu().item())
             logs['ell'].append(ell.detach().cpu().item())
             logs['kl'].append(kl_divergence.detach().cpu().item())
             logs['elbo'].append(-loss.detach().cpu().item())
+
+            # if i > 300:
+            #     break
 
     return model, logs
 

@@ -64,12 +64,12 @@ def step_temperature(S_old, F, q, d, dt=1):
     return S_new, T
 
 
-def step_I(I_old, K, d, dt=1):
+def step_I(I_old, K, q, d, dt=1):
     """Takes next time step to construct recursively the I matrix where
 
-        I_{i,j} = ∫k(ti, s)exp(-(tj-s)/d)ds from 0 to tj
+        I_{i,j} = (q/d)∫K(ti, s)exp(-(tj-s)/d)ds from 0 to tj
 
-    Rows fix the timestep inside k(ti, s) and colums determine the exponential term and
+    Rows fix the timestep inside K(ti, s) and colums determine the exponential term and
     integration bounds.
 
         I_{i,j} = d * k(ti,tj) * (1 - exp(-dt/d)) + I_{i,j-1} * exp(-dt/d)
@@ -84,7 +84,7 @@ def step_I(I_old, K, d, dt=1):
         type: np.ndarray column for time step t_j
     """
     decay_factor = torch.exp(-dt / d)
-    I_new = d * K * (1 - decay_factor) + I_old * decay_factor
+    I_new = q * K * (1 - decay_factor) + I_old * decay_factor
     I_new = (I_new + I_old) / 2
     return I_new
 
@@ -106,7 +106,7 @@ def step_kernel(Kj_old, I_row, q, d, dt=1):
 
     """
     decay_factor = torch.exp(-dt / d)
-    Kj_new = Kj_old * decay_factor + q**2 * I_row * (1 - decay_factor) / d
+    Kj_new = Kj_old * decay_factor + q * I_row * (1 - decay_factor)
     Kj_new = (Kj_new + Kj_old) / 2
     return Kj_new
 

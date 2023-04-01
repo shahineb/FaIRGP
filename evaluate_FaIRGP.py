@@ -1,7 +1,7 @@
 """
-Description : Fits GP for global temperature response emulation
+Description : Fits FaIR-contrained GP for global temperature response emulation
 
-Usage: evaluate_gp.py  [options] --cfg=<path_to_config> --o=<output_dir>
+Usage: evaluate_FaIRGP.py  [options] --cfg=<path_to_config> --o=<output_dir>
 
 Options:
   --cfg=<path_to_config>           Path to YAML configuration file to use.
@@ -20,7 +20,7 @@ import torch
 from gpytorch import distributions
 from sklearn.model_selection import KFold
 from src.evaluation import compute_scores, dump_plots
-from fit_gp import make_data, migrate_to_device, make_model, fit
+from fit_FaIRGP import make_data, migrate_to_device, make_model, fit
 
 
 def main(args, cfg):
@@ -91,14 +91,12 @@ def make_train_test_data(cfg, train_keys, test_keys):
 
 def predict(model, test_data):
     model.eval()
-    X_test = torch.cat([test_data.scenarios.cum_emissions[:, 0, None], test_data.scenarios.emissions[:, 1:]], dim=-1)
-    X_test = (X_test - model.mu) / model.sigma
     with torch.no_grad():
-        test_posterior = model(X_test)
+        test_posterior = model(test_data.scenarios)
         noisy_test_posterior = model.likelihood(test_posterior)
-    mean = model.sigma_targets * noisy_test_posterior.mean + model.mu_targets
-    covar = model.sigma_targets.pow(2) * noisy_test_posterior.covariance_matrix
-    noisy_test_posterior = distributions.MultivariateNormal(mean=mean, covariance_matrix=covar)
+    test_tas_fair = model._compute_mean(test_data.scenarios)
+    noisy_test_posterior = distributions.MultivariateNormal(mean=noisy_test_posterior.mean + test_tas_fair,
+                                                            covariance_matrix=noisy_test_posterior.lazy_covariance_matrix)
     return noisy_test_posterior
 
 

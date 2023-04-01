@@ -13,10 +13,12 @@ from src.variational import ScenarioVariationalStrategy
 
 
 class ThermalBoxesSVGP(ApproximateGP):
-    def __init__(self, scenario_dataset, inducing_scenario, kernel, likelihood, FaIR_model, S0, q_map, d_map):
+    def __init__(self, scenario_dataset, inducing_scenario, kernel, klat, klon, likelihood, FaIR_model, S0, q_map, d_map):
         variational_strategy = self._set_variational_strategy(inducing_scenario)
         super().__init__(variational_strategy=variational_strategy)
         self.kernel = kernel
+        self.klat = klat
+        self.klon = klon
         self.likelihood = likelihood
         self.train_scenarios = scenario_dataset
         self.FaIR_model = FaIR_model
@@ -57,6 +59,8 @@ class ThermalBoxesSVGP(ApproximateGP):
                           lat_idx=lat_idx,
                           lon_idx=lon_idx,
                           kernel=self.kernel,
+                          klat=self.klat,
+                          klon=self.klon,
                           d_map=self.d_map,
                           q_map=self.q_map,
                           mu=self.mu,
@@ -64,6 +68,8 @@ class ThermalBoxesSVGP(ApproximateGP):
                           diag=diag)
         Kww = compute_Kww(inducing_scenario=self.inducing_scenario,
                           kernel=self.kernel,
+                          klat=self.klat,
+                          klon=self.klon,
                           d_map=self.d_map,
                           q_map=self.q_map,
                           mu=self.mu,
@@ -74,6 +80,8 @@ class ThermalBoxesSVGP(ApproximateGP):
                           lat_idx=lat_idx,
                           lon_idx=lon_idx,
                           kernel=self.kernel,
+                          klat=self.klat,
+                          klon=self.klon,
                           d_map=self.d_map,
                           q_map=self.q_map,
                           mu=self.mu,
@@ -97,9 +105,12 @@ class ThermalBoxesSVGP(ApproximateGP):
         return self.variational_strategy.inducing_scenario
 
     def to(self, device):
-        super().to(device)
+        self = super().to(device)
         self.train_means = {k: v.to(device) for (k, v) in self.train_means.items()}
         self.train_targets = {k: v.to(device) for (k, v) in self.train_targets.items()}
+        self.FaIR_model = self.FaIR_model.to(device)
+        return self
 
     def cpu(self):
         self.to(device='cpu')
+        return self
