@@ -103,7 +103,7 @@ def plot_contourf_on_ax(field, fig, ax, levels=20, cmap='RdBu_r', vmax=None, vmi
     if colorbar:
         cax = ax.inset_axes((1.02, 0, 0.02, 1))
         cbar = fig.colorbar(cx, cax=cax)
-        cbar.set_label('ΔΤ (K)', fontsize=fontsize)
+        cbar.set_label(r'$\Delta T$ (K)', fontsize=fontsize)
 
     if title:
         ax.set_title(title, fontsize=fontsize)
