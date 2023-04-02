@@ -1,7 +1,5 @@
 from .exact_gp import ExactGP
-from .rff_gp import RFFGP
-from .svgp import SVGP
+from .multi_exact_gp import MultiExactGP
 from .thermalboxes_gp import ThermalBoxesGP
-from .thermalboxes_svgp import ThermalBoxesSVGP
 
-__all__ = ['ExactGP', 'RFFGP', 'SVGP', 'ThermalBoxesGP', 'ThermalBoxesSVGP']
+__all__ = ['ExactGP', 'ThermalBoxesGP', 'MultiExactGP']

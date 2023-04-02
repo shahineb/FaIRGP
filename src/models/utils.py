@@ -2,7 +2,7 @@ import os
 import sys
 import torch
 
-base_dir = os.path.join(os.getcwd(), '..')
+base_dir = os.path.join(os.getcwd(), '../..')
 sys.path.append(base_dir)
 
 import src.fair as fair
