@@ -23,6 +23,7 @@ class FaIR(nn.Module):
                  f2,
                  f3,
                  forcing_pattern,
+                 requires_grad=True,
                  **kwargs):
         super().__init__()
         self.a1 = nn.Parameter(torch.from_numpy(a1))
@@ -47,6 +48,11 @@ class FaIR(nn.Module):
         self.register_buffer('forcing_pattern', torch.from_numpy(forcing_pattern).float())
         self.register_buffer('PI_conc', torch.from_numpy(PI_conc).float())
         self.register_buffer('emis2conc', torch.from_numpy(emis2conc).float())
+
+        self.requires_grad = requires_grad
+        if not self.requires_grad:
+            for param in self.parameters():
+                param.requires_grad = False
 
     @property
     def tau(self):
