@@ -1,7 +1,7 @@
 """
-Description : Fits GP for spatially-resolved temperature response emulation
+Description : Fits FaIR-contrained GP for global temperature response emulation
 
-Usage: fit_spatial_GP.py  [options] --cfg=<path_to_config> --o=<output_dir>
+Usage: fit_spatial_simpleFaIRGP.py  [options] --cfg=<path_to_config> --o=<output_dir>
 
 Options:
   --cfg=<path_to_config>           Path to YAML configuration file to use.
@@ -14,9 +14,12 @@ import logging
 from docopt import docopt
 import tqdm
 import torch
-from gpytorch import means, kernels, likelihoods, mlls
-from src.preprocessing.spatial import make_data
-from src.models import MultiExactGP
+import numpy as np
+from gpytorch import kernels, mlls
+from src.preprocessing.spatial import make_data, get_fair_params
+from src.torchFaIR import FaIR
+from src.models import SimpleMultiThermalBoxesGP
+from src.likelihoods import InternalVariability
 from src.evaluation import dump_state_dict
 
 
@@ -47,36 +50,34 @@ def migrate_to_device(data, device):
 
 
 def make_model(cfg, data):
-    # Instantiate mean and kernel
-    mean = means.ZeroMean()
-    kernel = kernels.ScaleKernel(kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[0, 1, 2, 3]))
+    # Instantiate FaIR model
+    nlat, nlon = len(data.scenarios[0].lat), len(data.scenarios[0].lon)
+    base_kwargs = get_fair_params()
+    forcing_pattern = np.ones((nlat, nlon))
+    with torch.no_grad():
+        FaIR_model = FaIR(**base_kwargs, forcing_pattern=forcing_pattern, requires_grad=False)
 
-    # Instantiate gaussian observation likelihood
-    likelihood = likelihoods.GaussianLikelihood()
+    # Instantiate kernel for GP prior over forcing
+    kernel = kernels.ScaleKernel(kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[1, 2, 3, 4]))
 
-    # Instantiate GP
-    X = data.scenarios.glob_inputs[:, 1:]
-    mu, sigma = X.mean(dim=0), X.std(dim=0)
-    X = (X - mu) / sigma
-    y = data.scenarios.tas.view(X.size(0), -1)
-    mu_targets, sigma_targets = y.mean(dim=0), y.std(dim=0)
-    print(mu_targets.shape)
-    y = (y - mu_targets) / sigma_targets
-    model = MultiExactGP(X=X,
-                         y=y,
-                         mean=mean,
-                         kernel=kernel,
-                         likelihood=likelihood,
-                         mu=mu,
-                         sigma=sigma,
-                         mu_targets=mu_targets,
-                         sigma_targets=sigma_targets)
+    # Instantiate internal variability likelihood module
+    likelihood = InternalVariability(q=data.fair_kwargs['q'], d=data.fair_kwargs['d'])
+
+    # Instantiate FaIR-constrained GP
+    model = SimpleMultiThermalBoxesGP(scenario_dataset=data.scenarios,
+                                      kernel=kernel,
+                                      FaIR_model=FaIR_model,
+                                      likelihood=likelihood,
+                                      S0=data.S0,
+                                      q_map=data.q_map,
+                                      d_map=data.d_map)
     return model
 
 
 def fit(model, data, cfg):
     # Set model in training mode
     model.train()
+    flattened_targets = model.train_targets.view(len(model.train_scenarios.timesteps), -1).T
 
     # Define optimiser and marginal likelihood objective
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg['training']['lr'])
@@ -87,8 +88,8 @@ def fit(model, data, cfg):
 
     for i in training_iter:
         optimizer.zero_grad()
-        output = model(model.train_inputs[0])
-        loss = -mll(output, model.train_targets.T).mean()
+        output = model.train_prior_dist()
+        loss = -mll(output, flattened_targets).mean()
         loss.backward()
         optimizer.step()
         training_iter.set_postfix_str(f"LL = {-loss.item()}")

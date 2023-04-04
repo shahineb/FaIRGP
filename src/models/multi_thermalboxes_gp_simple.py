@@ -48,10 +48,9 @@ class SimpleMultiThermalBoxesGP(GP):
         return covar
 
     def train_prior_dist(self):
-        train_mean = torch.zeros_like(self.train_scenarios.tas)
-        train_covar = self._compute_covariance(self.train_scenarios)
-        train_prior_dist = distributions.MultivariateNormal(train_mean, train_covar)
-        return train_prior_dist
+        prior_dist = self.forward(self.train_scenarios)
+        output = self.likelihood(prior_dist)
+        return output
 
     def forward(self, scenario_dataset):
         mean = torch.zeros(len(scenario_dataset.timesteps))
