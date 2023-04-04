@@ -109,7 +109,7 @@ class FaIR(nn.Module):
         T = torch.sum((S_old + S_new) / 2, dim=0)
         return S_new, T
 
-    def forward(self, inp_ar, timestep, d, q, weights, S0):
+    def forward(self, inp_ar, timestep, q, d, weights, S0):
         n_species, n_timesteps = inp_ar.shape
         # Concentration, Radiative Forcing and Alpha
         C_ts, RF_ts, alpha_ts = [], [], []
