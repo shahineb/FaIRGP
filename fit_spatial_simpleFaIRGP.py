@@ -61,7 +61,7 @@ def make_model(cfg, data):
     kernel = kernels.ScaleKernel(kernels.MaternKernel(nu=1.5, ard_num_dims=4, active_dims=[1, 2, 3, 4]))
 
     # Instantiate internal variability likelihood module
-    likelihood = InternalVariability(q=data.fair_kwargs['q'], d=data.fair_kwargs['d'])
+    likelihood = InternalVariability(q=data.fair_kwargs['q'], d=data.fair_kwargs['d'], add_observation_noise=True)
 
     # Instantiate FaIR-constrained GP
     model = SimpleMultiThermalBoxesGP(scenario_dataset=data.scenarios,
@@ -92,7 +92,13 @@ def fit(model, data, cfg):
         loss = -mll(output, flattened_targets).mean()
         loss.backward()
         optimizer.step()
-        training_iter.set_postfix_str(f"LL = {-loss.item()}")
+        ###
+        lengthscale = model.kernel.base_kernel.lengthscale.detach().squeeze()
+        outputscale = model.kernel.outputscale.detach().squeeze()
+        OU_scale = model.likelihood.noise.detach().squeeze()
+        training_iter.set_postfix_str(f"LL = {-loss.item()} | CO2={lengthscale[0]} | CH4={lengthscale[1]} | SO2={lengthscale[2]} | sigmaF={outputscale.item()} | OU={OU_scale.item()}")
+        ###
+        # training_iter.set_postfix_str(f"LL = {-loss.item()}")
     return model
 
 

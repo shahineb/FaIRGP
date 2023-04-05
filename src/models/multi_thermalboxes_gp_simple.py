@@ -29,8 +29,8 @@ class SimpleMultiThermalBoxesGP(GP):
         train_targets = {name: scenario_dataset[name].tas - self.train_means[name]
                          for name in scenario_dataset.scenarios.keys()}
         train_targets = torch.cat([v for v in train_targets.values()])
-        self.register_buffer('mu_targets', train_targets.mean())
-        self.register_buffer('sigma_targets', train_targets.std())
+        self.register_buffer('mu_targets', train_targets.mean(dim=0))
+        self.register_buffer('sigma_targets', train_targets.std(dim=0))
         self.register_buffer('train_targets', (train_targets - self.mu_targets) / self.sigma_targets)
 
     def _compute_mean(self, scenario):
