@@ -25,7 +25,7 @@ model:
 # TRAINING
 training:
   # Number of training epochs
-  n_epochs: 80
+  n_epochs: 60
 
   # Learning rate
   lr: 0.1

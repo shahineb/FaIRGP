@@ -22,7 +22,7 @@ class InternalVariability(likelihoods.GaussianLikelihood):
         mat = torch.from_numpy(distance_matrix(v, v)).float()
         return mat
 
-    def compute_covariance(self, size):
+    def compute_covariance(self, size, diag=False):
         nboxes = len(self.d)
         dist = self._get_distance_matrix(size)
         dist = dist.view(size, size, 1).repeat(1, 1, nboxes)
@@ -39,6 +39,6 @@ class InternalVariability(likelihoods.GaussianLikelihood):
 
     def marginal(self, function_dist, *args, **kwargs):
         mean, covar = function_dist.mean, function_dist.lazy_covariance_matrix
-        internal_covar = self.compute_covariance(len(mean))
+        internal_covar = self.compute_covariance(mean.size(-1))
         full_covar = covar + internal_covar
         return function_dist.__class__(mean, full_covar)

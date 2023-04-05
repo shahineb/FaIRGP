@@ -60,7 +60,6 @@ def make_model(cfg, data):
     X = (X - mu) / sigma
     y = data.scenarios.tas.view(X.size(0), -1)
     mu_targets, sigma_targets = y.mean(dim=0), y.std(dim=0)
-    print(mu_targets.shape)
     y = (y - mu_targets) / sigma_targets
     model = MultiExactGP(X=X,
                          y=y,
