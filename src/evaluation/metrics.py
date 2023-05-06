@@ -82,9 +82,16 @@ def compute_probabilistic_metrics(predicted_dist, groundtruth):
         calibs.append(mask.float().mean().item())
     ICI = np.abs(np.asarray(calibs) - confidence_region_sizes).mean()
 
+    # Compute CRPS
+    mu, sigma = predicted_dist.mean, predicted_dist.stddev
+    y = (groundtruth - mu) / sigma
+    norm = torch.distributions.Normal(0, 1)
+    crps = torch.mean(sigma * (y * (2 * norm.cdf(y) - 1) + 2 * norm.log_prob(y).exp() - 1 / np.sqrt(np.pi)))
+
     # Encapsulate results in output dictionnary
     output = {'ll': ll.item(),
               'calib95': calib95.item(),
+              'CRPS': crps.item(),
               'ICI': ICI.item()}
     return output
 
