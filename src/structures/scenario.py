@@ -355,11 +355,11 @@ class Scenario(nn.Module):
     def weights(self):
         return torch.cos(torch.deg2rad(self.lat))
 
-    @functools.cached_property
-    def glob_emissions(self):
-        weighted_emissions = self.emissions.mul(self.weights.view(1, -1, 1, 1))
-        glob_emissions = weighted_emissions.sum(dim=(1, 2)).div(self.weights.sum() * len(self.lon))
-        return glob_emissions
+    # @functools.cached_property
+    # def glob_emissions(self):
+    #     weighted_emissions = self.emissions.mul(self.weights.view(1, -1, 1, 1))
+    #     glob_emissions = weighted_emissions.sum(dim=(1, 2)).div(self.weights.sum() * len(self.lon))
+    #     return glob_emissions
 
     @functools.cached_property
     def glob_tas(self):

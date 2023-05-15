@@ -15,6 +15,7 @@ class SpatialThermalBoxesGP(GP):
 
         # Setup mean, kernel and likelihood
         self.pattern_scaling = self._fit_pattern_scaling()
+        self.beta = torch.from_numpy(self.pattern_scaling.coef_).float().reshape(self.train_scenarios.tas.size(1), self.train_scenarios.tas.size(2))
         self.kernel = kernel
         self.likelihood = likelihood
 
@@ -26,7 +27,7 @@ class SpatialThermalBoxesGP(GP):
         self.train_means = self._compute_means(scenario_dataset)
         train_targets = {name: scenario_dataset[name].tas - self.train_means[name]
                          for name in scenario_dataset.scenarios.keys()}
-        train_targets = torch.cat([v for v in train_targets.values()])
+        train_targets = torch.cat([v for v in train_targets.values()]).div(self.beta.unsqueeze(0))
         self.register_buffer('mu_targets', train_targets.mean(dim=0))
         self.register_buffer('sigma_targets', train_targets.std(dim=0))
         self.register_buffer('train_targets', (train_targets - self.mu_targets) / self.sigma_targets)
@@ -51,8 +52,8 @@ class SpatialThermalBoxesGP(GP):
 
     def train_prior_dist(self):
         prior_dist = self.forward(self.train_scenarios)
-        output = self.likelihood(prior_dist)
-        return output
+        # output = self.likelihood(prior_dist)
+        return prior_dist
 
     def forward(self, scenario_dataset):
         mean = torch.zeros(len(scenario_dataset.timesteps))
@@ -92,9 +93,9 @@ class SpatialThermalBoxesGP(GP):
         ntrain = len(self.train_scenarios.timesteps)
         mF = self._compute_forcing_mean(test_scenarios).view(-1, 1)
 
-        mu, sigma = self.train_scenarios.mu_glob_inputs, self.train_scenarios.sigma_glob_inputs
-        test_scenario_emissions_std = (test_scenarios.glob_inputs - mu) / sigma
-        kFF = self.kernel(test_scenario_emissions_std).evaluate()
+        # mu, sigma = self.train_scenarios.mu_glob_inputs, self.train_scenarios.sigma_glob_inputs
+        # test_scenario_emissions_std = (test_scenarios.glob_inputs - mu) / sigma
+        # kFF = self.kernel(test_scenario_emissions_std).evaluate()
 
         kFT = compute_kFT(test_scenarios, self.train_scenarios, self.kernel, self.q, self.d)
 

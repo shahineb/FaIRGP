@@ -12,6 +12,7 @@ import os
 import yaml
 import logging
 from docopt import docopt
+import math
 import tqdm
 import torch
 from gpytorch import kernels, mlls
@@ -66,7 +67,11 @@ def make_model(cfg, data):
 def fit(model, data, cfg):
     # Set model in training mode
     model.train()
+
+    # Set up static tensors used in training procedure
     flattened_targets = model.train_targets.view(len(model.train_scenarios.timesteps), -1).T
+    nlat, nlon = len(model.train_scenarios[0].lat), len(model.train_scenarios[0].lon)
+    wlat = torch.cos(torch.deg2rad(model.train_scenarios[0].lat)).clip(min=torch.finfo(torch.float64).eps)[:, None]
 
     # Define optimiser and marginal likelihood objective
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg['training']['lr'])
@@ -78,7 +83,8 @@ def fit(model, data, cfg):
     for i in training_iter:
         optimizer.zero_grad()
         output = model.train_prior_dist()
-        loss = -mll(output, flattened_targets).mean()
+        loss = -mll(output, flattened_targets).reshape(nlat, nlon)
+        loss = torch.sum(loss * wlat).div(loss.size(-1) * wlat.sum())
         loss.backward()
         optimizer.step()
         ###
