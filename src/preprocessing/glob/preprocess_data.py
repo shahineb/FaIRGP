@@ -3,7 +3,8 @@ import sys
 import numpy as np
 import torch
 import xarray as xr
-from .constants import GtC_to_GtCO2, Gt_to_Mt
+from .utils import calc_spatial_integral
+from .constants import GtC_to_GtCO2, Gt_to_Mt, kg_to_Mt, yr_to_s
 
 base_dir = os.path.join(os.getcwd(), '../..')
 sys.path.append(base_dir)
@@ -31,13 +32,13 @@ def load_emissions_dataset(filepath):
     # inputs = xr.open_dataset(filepath).compute().isel(time=slice(0, None), latitude=slice(35, 55), longitude=slice(110, 130))
     # inputs = xr.open_dataset(filepath).compute().isel(time=slice(0, None), latitude=slice(0, None), longitude=slice(110, 130))
     inputs.CO2.data = inputs.CO2.data / GtC_to_GtCO2
-    inputs.CO2.attrs['units'] = 'GtC'
+    inputs.CO2.attrs['units'] = 'GtC/yr'
     inputs.CH4.data = inputs.CH4.data * Gt_to_Mt
-    inputs.CH4.attrs['units'] = 'MtCH4'
-    inputs.SO2.data = inputs.SO2.data * Gt_to_Mt
-    inputs.SO2.attrs['units'] = 'MtSO2'
-    inputs.BC.data = inputs.BC.data * Gt_to_Mt
-    inputs.BC.attrs['units'] = 'MtBC'
+    inputs.CH4.attrs['units'] = 'MtCH4/yr'
+    inputs.SO2.data = inputs.SO2.data * kg_to_Mt * yr_to_s
+    inputs.SO2.attrs['units'] = 'MtSO2/yr m-2'
+    inputs.BC.data = inputs.BC.data * kg_to_Mt * yr_to_s
+    inputs.BC.attrs['units'] = 'MtBC/yr m-2'
     return inputs
 
 
@@ -59,9 +60,8 @@ def extract_arrays(xr_input, xr_output):
     # Compute emissions
     CO2_emissions = np.append(np.diff(cum_CO2_emissions)[0], np.diff(cum_CO2_emissions))
     CH4_emissions = xr_input.CH4.values
-    weights = np.cos(np.deg2rad(xr_input.latitude))
-    SO2_emissions = xr_input.SO2.weighted(weights).mean(['latitude', 'longitude']).data
-    BC_emissions = xr_input.BC.weighted(weights).mean(['latitude', 'longitude']).data
+    SO2_emissions = calc_spatial_integral(xr_input.SO2).data
+    BC_emissions = calc_spatial_integral(xr_input.BC).data
     emissions = np.stack([CO2_emissions, CH4_emissions, SO2_emissions, BC_emissions])
 
     # Compute average temperature anomaly

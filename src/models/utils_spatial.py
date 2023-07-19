@@ -9,16 +9,18 @@ import src.fair as fair
 from src.fair.tools import step_I, step_kernel
 
 
-def compute_means(scenario_dataset):
+def compute_means(scenario_dataset, pattern_scaling):
     base_kwargs = fair.get_params()
     means = dict()
+    nlat, nlon = len(scenario_dataset[0].lat), len(scenario_dataset[0].lon)
     for name, scenario in scenario_dataset.scenarios.items():
         res = fair.run(scenario.full_timesteps.numpy(),
-                       scenario.full_emissions.T.numpy(),
+                       scenario.full_glob_emissions.T.numpy(),
                        base_kwargs)
-        S = res['S']
-        S = scenario.trim_hist(S)
-        means.update({scenario: torch.from_numpy(S).float()})
+        T = res['T']
+        T = scenario.trim_hist(T)
+        T = pattern_scaling.predict(T.reshape(-1, 1)).reshape(-1, nlat, nlon)
+        means.update({name: torch.from_numpy(T).float()})
     return means
 
 
@@ -30,9 +32,9 @@ def compute_I(scenario_dataset, kernel, q, d):
 
 
 def compute_I_scenario(scenario_dataset, scenario, kernel, q, d):
-    mu, sigma = scenario_dataset.mu_inputs, scenario_dataset.sigma_inputs
-    scenario_emissions_std = (scenario.full_inputs - mu) / sigma
-    dataset_emissions_std = (scenario_dataset.full_inputs - mu) / sigma
+    mu, sigma = scenario_dataset.mu_glob_inputs, scenario_dataset.sigma_glob_inputs
+    scenario_emissions_std = (scenario.full_glob_inputs - mu) / sigma
+    dataset_emissions_std = (scenario_dataset.full_glob_inputs - mu) / sigma
 
     K = kernel(dataset_emissions_std, scenario_emissions_std).evaluate().unsqueeze(-1)
     I = torch.zeros((K.size(0), K.size(1), len(d)))
@@ -45,14 +47,10 @@ def compute_I_scenario(scenario_dataset, scenario, kernel, q, d):
 
 
 def compute_covariance(scenario_dataset, I, q, d):
-    nboxes = len(q)
-    I = I[..., None].repeat(1, 1, 1, nboxes).view(I.size(0), I.size(1), -1)
-    d = d.repeat(nboxes)
-    q = q.repeat(nboxes)
     Kj = [compute_covariance_scenario(scenario_dataset, scenario, I, q, d)
           for scenario in scenario_dataset.scenarios.values()]
-    Kj = torch.cat(Kj, dim=-2)
-    Kj = scenario_dataset.trim_hist(Kj).sum(dim=-1)
+    Kj = torch.cat(Kj, dim=-1)
+    Kj = scenario_dataset.trim_hist(Kj)
     Kj = 0.5 * (Kj + Kj.T)
     return Kj
 
@@ -65,8 +63,8 @@ def compute_covariance_scenario(scenario_dataset, scenario, I, q, d):
         I_new = I_scenario[t]
         Kj_new = step_kernel(Kj_old, I_new, q.unsqueeze(0), d.unsqueeze(0))
         Kj[t] = Kj_new
-    Kj = scenario.trim_hist(Kj)
-    return Kj.permute(1, 0, 2)
+    Kj = scenario.trim_hist(Kj).sum(dim=-1)
+    return Kj.T
 
 
 def compute_mF(scenario_dataset):
@@ -74,7 +72,7 @@ def compute_mF(scenario_dataset):
     means = dict()
     for name, scenario in scenario_dataset.scenarios.items():
         res = fair.run(scenario.full_timesteps.numpy(),
-                       scenario.full_emissions.T.numpy(),
+                       scenario.full_glob_emissions.T.numpy(),
                        base_kwargs)
         mF = torch.from_numpy(res['RF'].sum(axis=0)).float()
         mF = scenario.trim_hist(mF)

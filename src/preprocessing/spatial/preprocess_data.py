@@ -3,7 +3,8 @@ import sys
 import numpy as np
 import torch
 import xarray as xr
-from .constants import GtC_to_GtCO2, Gt_to_Mt
+from .utils import calc_spatial_integral
+from .constants import GtC_to_GtCO2, Gt_to_Mt, kg_to_Mt, yr_to_s
 
 base_dir = os.path.join(os.getcwd(), '../..')
 sys.path.append(base_dir)
@@ -28,13 +29,13 @@ def get_fair_params():
 def load_emissions_dataset(filepath):
     inputs = xr.open_dataset(filepath).compute()
     inputs.CO2.data = inputs.CO2.data / GtC_to_GtCO2
-    inputs.CO2.attrs['units'] = 'GtC'
+    inputs.CO2.attrs['units'] = 'GtC/yr'
     inputs.CH4.data = inputs.CH4.data * Gt_to_Mt
-    inputs.CH4.attrs['units'] = 'MtCH4'
-    inputs.SO2.data = inputs.SO2.data * Gt_to_Mt
-    inputs.SO2.attrs['units'] = 'MtSO2'
-    inputs.BC.data = inputs.BC.data * Gt_to_Mt
-    inputs.BC.attrs['units'] = 'MtBC'
+    inputs.CH4.attrs['units'] = 'MtCH4/yr'
+    inputs.SO2.data = inputs.SO2.data * kg_to_Mt * yr_to_s
+    inputs.SO2.attrs['units'] = 'MtSO2/yr m-2'
+    inputs.BC.data = inputs.BC.data * kg_to_Mt * yr_to_s
+    inputs.BC.attrs['units'] = 'MtBC/yr m-2'
     return inputs
 
 
@@ -73,17 +74,21 @@ def extract_arrays(xr_input):
     SO2_emissions = xr_input.SO2.values
     BC_emissions = xr_input.BC.values
     emissions = np.stack([CO2_emissions, CH4_emissions, SO2_emissions, BC_emissions])
-    # emissions = np.stack([CO2_emissions, CH4_emissions, SO2_emissions, BC_emissions])[:, :, :10, :10]
+
+    CO2_glob_emissions = CO2_emissions.mean(axis=(1, 2))
+    CH4_glob_emissions = CH4_emissions.mean(axis=(1, 2))
+    SO2_glob_emissions = calc_spatial_integral(xr_input.SO2).data
+    BC_glob_emissions = calc_spatial_integral(xr_input.BC).data
+    glob_emissions = np.stack([CO2_glob_emissions, CH4_glob_emissions, SO2_glob_emissions, BC_glob_emissions])
 
     # Compute spatial temperature anomaly
     tas = xr_input.tas.data
-    # tas = xr_input.tas.data[:, :10, :10]
-    return time, lat, lon, cum_emissions, emissions, tas
+    return time, lat, lon, cum_emissions, emissions, glob_emissions, tas
 
 
 def make_scenario(key, inputs, outputs, hist_scenario=None):
     xr_input = make_input_array(inputs[key], outputs[key])
-    time, lat, lon, _, emission, tas = extract_arrays(xr_input)
+    time, lat, lon, _, emission, glob_emissions, tas = extract_arrays(xr_input)
     scenario = Scenario(name=key,
                         timesteps=torch.from_numpy(time).float(),
                         lat=torch.from_numpy(lat).float(),
@@ -91,4 +96,5 @@ def make_scenario(key, inputs, outputs, hist_scenario=None):
                         emissions=torch.from_numpy(emission).float().permute(1, 2, 3, 0),
                         tas=torch.from_numpy(tas).float(),
                         hist_scenario=hist_scenario)
+    scenario.glob_emissions = torch.from_numpy(glob_emissions).float().T
     return scenario

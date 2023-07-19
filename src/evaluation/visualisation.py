@@ -103,7 +103,7 @@ def plot_contourf_on_ax(field, fig, ax, levels=20, cmap='RdBu_r', vmax=None, vmi
     if colorbar:
         cax = ax.inset_axes((1.02, 0, 0.02, 1))
         cbar = fig.colorbar(cx, cax=cax)
-        cbar.set_label('ΔΤ (K)', fontsize=fontsize)
+        cbar.set_label(r'$\Delta T$ (K)', fontsize=fontsize)
 
     if title:
         ax.set_title(title, fontsize=fontsize)
@@ -118,7 +118,7 @@ def plot_tryptych(xr_prior_mean,
                   xr_posterior_ub,
                   xr_posterior_lb,
                   xr_groundtruth):
-    fig, ax = plt.subplots(3, 4, figsize=(25, 10), subplot_kw={'projection': ccrs.Robinson()})
+    fig, ax = plt.subplots(3, 4, figsize=(22, 9), subplot_kw={'projection': ccrs.Robinson()})
 
     for i in [0, 1, 3]:
         ax[0, i].remove()
@@ -126,15 +126,16 @@ def plot_tryptych(xr_prior_mean,
 
     vmax = max(np.abs(xr_posterior_ub.data).max(), np.abs(xr_posterior_lb.data).max(), np.abs(xr_groundtruth.data).max())
 
-    _ = plot_contourf_on_ax(xr_prior_mean, fig, ax[1, 0], title="Prior mean", vmax=vmax, colorbar=True)
-    _ = plot_contourf_on_ax(xr_correction, fig, ax[1, 1], title="Posterior correction", colorbar=True, cmap='inferno')
-    _ = plot_contourf_on_ax(xr_posterior_ub, fig, ax[0, 2], title="Posterior upper bound", vmax=vmax, colorbar=True)
-    _ = plot_contourf_on_ax(xr_posterior_mean, fig, ax[1, 2], title="Posterior mean", vmax=vmax, colorbar=True)
-    _ = plot_contourf_on_ax(xr_posterior_lb, fig, ax[2, 2], title="Posterior lower bound", vmax=vmax, colorbar=True)
-    _ = plot_contourf_on_ax(xr_groundtruth, fig, ax[1, 3], title="Groundtruth", vmax=vmax, colorbar=True)
+    _, __, cbar_prior_mean = plot_contourf_on_ax(xr_prior_mean, fig, ax[1, 0], title="Prior mean", vmax=vmax, colorbar=True, fontsize=20)
+    _, __, cbar_correction = plot_contourf_on_ax(xr_correction, fig, ax[1, 1], title="Posterior correction", colorbar=True, cmap='PiYG_r', fontsize=20)
+    _, __, cbar_posterior_ub = plot_contourf_on_ax(xr_posterior_ub, fig, ax[0, 2], title="Posterior upper bound", vmax=vmax, colorbar=True, fontsize=20)
+    _, __, cbar_posterior_mean = plot_contourf_on_ax(xr_posterior_mean, fig, ax[1, 2], title="Posterior mean", vmax=vmax, colorbar=True, fontsize=20)
+    _, __, cbar_posterior_lb = plot_contourf_on_ax(xr_posterior_lb, fig, ax[2, 2], title="Posterior lower bound", vmax=vmax, colorbar=True, fontsize=20)
+    _, __, cbar_groundtruth = plot_contourf_on_ax(xr_groundtruth, fig, ax[1, 3], title="Groundtruth", vmax=vmax, colorbar=True, fontsize=20)
+    cbars = (cbar_prior_mean, cbar_correction, cbar_posterior_mean, cbar_posterior_lb, cbar_posterior_ub, cbar_groundtruth)
 
     plt.tight_layout()
-    return fig, ax
+    return fig, ax, cbars
 
 
 def plot_timeserie_maps(xr_timeserie):

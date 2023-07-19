@@ -78,18 +78,18 @@ def make_data(cfg):
     d_map = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'd_maps.npy'))).double()
     q_map = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'q_maps.npy'))).double()
 
-    # Create inducing scenario
-    cfg_inducing = cfg['model']['inducing_scenario']
-    inducing_scenario = GridInducingScenario(base_scenario=scenarios[cfg_inducing['key']],
-                                             n_inducing_times=cfg_inducing['n_inducing_times'],
-                                             n_inducing_lats=cfg_inducing['n_inducing_lats'],
-                                             n_inducing_lons=cfg_inducing['n_inducing_lons'],
-                                             d_map=d_map,
-                                             q_map=q_map)
+    # # Create inducing scenario
+    # cfg_inducing = cfg['model']['inducing_scenario']
+    # inducing_scenario = GridInducingScenario(base_scenario=scenarios[cfg_inducing['key']],
+    #                                          n_inducing_times=cfg_inducing['n_inducing_times'],
+    #                                          n_inducing_lats=cfg_inducing['n_inducing_lats'],
+    #                                          n_inducing_lons=cfg_inducing['n_inducing_lons'],
+    #                                          d_map=d_map,
+    #                                          q_map=q_map)
 
     # Encapsulate into named tuple object
     kwargs = {'scenarios': scenarios,
-              'inducing_scenario': inducing_scenario,
+              # 'inducing_scenario': inducing_scenario,
               'fair_kwargs': fair_kwargs,
               'S0': S0,
               'd_map': d_map,

@@ -355,11 +355,11 @@ class Scenario(nn.Module):
     def weights(self):
         return torch.cos(torch.deg2rad(self.lat))
 
-    @functools.cached_property
-    def glob_emissions(self):
-        weighted_emissions = self.emissions.mul(self.weights.view(1, -1, 1, 1))
-        glob_emissions = weighted_emissions.sum(dim=(1, 2)).div(self.weights.sum() * len(self.lon))
-        return glob_emissions
+    # @functools.cached_property
+    # def glob_emissions(self):
+    #     weighted_emissions = self.emissions.mul(self.weights.view(1, -1, 1, 1))
+    #     glob_emissions = weighted_emissions.sum(dim=(1, 2)).div(self.weights.sum() * len(self.lon))
+    #     return glob_emissions
 
     @functools.cached_property
     def glob_tas(self):
@@ -421,9 +421,6 @@ class Scenario(nn.Module):
 
     @functools.cached_property
     def full_inputs(self):
-        # logCO2 = torch.log(self.full_concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps) / 278.)
-        # sqrtCO2 = torch.sqrt(self.full_concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps))
-        # sqrtCH4 = torch.sqrt(self.full_concentrations[..., 1, None].clip(min=torch.finfo(torch.float32).eps))
         if self.emissions.ndim == 2:
             full_inputs = torch.cat([self.full_timesteps.unsqueeze(-1),
                                      self.full_cum_emissions[..., 0, None],
@@ -433,6 +430,11 @@ class Scenario(nn.Module):
             full_inputs = torch.cat([full_time_lat_lon,
                                      self.full_cum_emissions[..., 0, None],
                                      self.full_emissions[..., 1:]], dim=-1)
+        # full_inputs = torch.cat([self.full_timesteps.unsqueeze(-1),
+        #                          1190.3430 * torch.ones(500, 1),
+        #                          torch.zeros(500, 3)], dim=-1)
+        # full_inputs = torch.cat([self.full_timesteps.unsqueeze(-1),
+        #                          self.full_concentrations], dim=-1)
         return full_inputs
 
     @functools.cached_property
@@ -449,9 +451,6 @@ class Scenario(nn.Module):
 
     @functools.cached_property
     def inputs(self):
-        # logCO2 = torch.log(self.concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps) / 278.)
-        # sqrtCO2 = torch.sqrt(self.concentrations[..., 0, None].clip(min=torch.finfo(torch.float32).eps))
-        # sqrtCH4 = torch.sqrt(self.concentrations[..., 1, None].clip(min=torch.finfo(torch.float32).eps))
         if self.emissions.ndim == 2:
             inputs = torch.cat([self.timesteps.unsqueeze(-1),
                                 self.cum_emissions[..., 0, None],
@@ -461,6 +460,11 @@ class Scenario(nn.Module):
             inputs = torch.cat([time_lat_lon,
                                 self.cum_emissions[..., 0, None],
                                 self.emissions[..., 1:]], dim=-1)
+        # inputs = torch.cat([self.timesteps.unsqueeze(-1),
+        #                     1190.3430 * torch.ones(500, 1),
+        #                     torch.zeros(500, 3)], dim=-1)
+        # inputs = torch.cat([self.timesteps.unsqueeze(-1),
+        #                     self.concentrations], dim=-1)
         return inputs
 
     @functools.cached_property
