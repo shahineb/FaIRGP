@@ -1,7 +1,7 @@
 """
 Description : Fits GP for global temperature response emulation
 
-Usage: evaluate_GP.py  [options] --cfg=<path_to_config> --o=<output_dir>
+Usage: evaluate_Plain_GP.py  [options] --cfg=<path_to_config> --o=<output_dir>
 
 Options:
   --cfg=<path_to_config>           Path to YAML configuration file to use.
@@ -20,7 +20,7 @@ import torch
 from gpytorch import distributions
 from sklearn.model_selection import KFold
 from src.evaluation import compute_scores, dump_plots
-from fit_GP import make_data, migrate_to_device, make_model, fit
+from fit_Plain_GP import make_data, migrate_to_device, make_model, fit
 
 
 def main(args, cfg):

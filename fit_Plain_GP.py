@@ -1,7 +1,7 @@
 """
-Description : Fits GP for spatially-resolved temperature response emulation
+Description : Fits GP for global temperature response emulation
 
-Usage: fit_spatial_GP.py  [options] --cfg=<path_to_config> --o=<output_dir>
+Usage: fit_Plain_GP.py  [options] --cfg=<path_to_config> --o=<output_dir>
 
 Options:
   --cfg=<path_to_config>           Path to YAML configuration file to use.
@@ -15,8 +15,8 @@ from docopt import docopt
 import tqdm
 import torch
 from gpytorch import means, kernels, likelihoods, mlls
-from src.preprocessing.spatial import make_data
-from src.models import MultiExactGP
+from src.preprocessing.glob import make_data
+from src.models import ExactGP
 from src.evaluation import dump_state_dict
 
 
@@ -55,21 +55,19 @@ def make_model(cfg, data):
     likelihood = likelihoods.GaussianLikelihood()
 
     # Instantiate GP
-    X = data.scenarios.glob_inputs[:, 1:]
+    X = torch.cat([data.scenarios.cum_emissions[:, 0, None], data.scenarios.emissions[:, 1:]], dim=-1)
     mu, sigma = X.mean(dim=0), X.std(dim=0)
     X = (X - mu) / sigma
-    y = data.scenarios.tas.view(X.size(0), -1)
-    mu_targets, sigma_targets = y.mean(dim=0), y.std(dim=0)
-    y = (y - mu_targets) / sigma_targets
-    model = MultiExactGP(X=X,
-                         y=y,
-                         mean=mean,
-                         kernel=kernel,
-                         likelihood=likelihood,
-                         mu=mu,
-                         sigma=sigma,
-                         mu_targets=mu_targets,
-                         sigma_targets=sigma_targets)
+    y = (data.scenarios.tas - data.scenarios.mu_tas) / data.scenarios.sigma_tas
+    model = ExactGP(X=X,
+                    y=y,
+                    mean=mean,
+                    kernel=kernel,
+                    likelihood=likelihood,
+                    mu=mu,
+                    sigma=sigma,
+                    mu_targets=data.scenarios.mu_tas,
+                    sigma_targets=data.scenarios.sigma_tas)
     return model
 
 
@@ -87,7 +85,7 @@ def fit(model, data, cfg):
     for i in training_iter:
         optimizer.zero_grad()
         output = model(model.train_inputs[0])
-        loss = -mll(output, model.train_targets.T).mean()
+        loss = -mll(output, model.train_targets)
         loss.backward()
         optimizer.step()
         training_iter.set_postfix_str(f"LL = {-loss.item()}")

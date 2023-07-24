@@ -1,5 +1,5 @@
 ################################################################################
-#   CONFIGURATIONS FOR FITTING FaIRGP
+#   CONFIGURATIONS FOR FITTING THE SPATIAL PLAIN GP
 ################################################################################
 
 # DATASET
@@ -7,7 +7,7 @@ dataset:
   # Path to data directory
   dirpath: data/
 
-  # Keys of scenearios to load
+  # Keys of scenarios to load for training (commment scenarios to remove them)
   keys:
     - historical
     - ssp126
@@ -25,8 +25,7 @@ model:
 # TRAINING
 training:
   # Number of training epochs
-  n_epochs: 60
-  # n_epochs: 2
+  n_epochs: 200
 
   # Learning rate
   lr: 0.1
