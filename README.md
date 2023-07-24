@@ -26,7 +26,7 @@ $ python fit_spatial_FaIRGP.py --cfg=config/spatial-FaIRGP.yaml --o=path/to/outp
 ```
 
 
-# Reproduce paper results
+# Reproduce results
 
 ### SSP global emulation benchmark
 
@@ -50,8 +50,8 @@ $ python evaluate_FaIR.py --cfg=config/FaIR.yaml --o=path/to/output/directory
 
 ### SSP spatial emulation benchmark
 
-1. Fit 4 spatial FaIRGP model on training set without {ssp126, ssp245, ssp370, ssp585}
-2. Fit 4 spatial PlainGP model on training set without {ssp126, ssp245, ssp370, ssp585}
+1. Fit 4 spatial FaIRGP model on training set without ssp126 XOR ssp245 XOR ssp370 XOR ssp585
+2. Fit 4 spatial PlainGP model on training set without ssp126 XOR ssp245 XOR ssp370 XOR ssp585
 3. Go to `notebooks/SSP-spatial-experiment-score-analysis.ipynb`
 
 
