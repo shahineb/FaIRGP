@@ -26,8 +26,6 @@ $ python fit_spatial_FaIRGP.py --cfg=config/spatial-FaIRGP.yaml --o=path/to/outp
 ```
 
 
-
-
 # Reproduce paper results
 
 ## SSP global emulation benchmark
@@ -38,13 +36,11 @@ $ python evaluate_FaIRGP.py --cfg=config/FaIRGP.yaml --o=path/to/output/director
 ```
 
 2. Running evaluation of Plain GP
-- Run from root directory
 ```bash
 $ python evaluate_Plain_GP.py --cfg=config/PlainGP.yaml --o=path/to/output/directory
 ```
 
 3. Running evaluation of FaIR
-- Run from root directory
 ```bash
 $ python evaluate_FaIR.py --cfg=config/FaIR.yaml --o=path/to/output/directory
 ```
