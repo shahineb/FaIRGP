@@ -7,7 +7,7 @@ dataset:
   # Path to data directory
   dirpath: data/
 
-  # Keys of scenearios to load
+  # Keys of scenarios to load (for evaluation only)
   keys:
     - historical
     - ssp126

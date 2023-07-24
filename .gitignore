@@ -35,6 +35,3 @@ __pycache__/
 
 # Sandbox directories
 **/sandbox
-
-# Data directories
-**/data
