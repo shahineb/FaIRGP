@@ -12,7 +12,6 @@ import os
 import yaml
 import logging
 from docopt import docopt
-import math
 import tqdm
 import torch
 from gpytorch import kernels, mlls
