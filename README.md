@@ -2,7 +2,7 @@
 
 
 <p align="center">
-  <img width="40%" src="docs/img/fairgp-logo.png"/>
+  <img width="35%" src="docs/img/fairgp-logo.png"/>
 </p>
 
 
