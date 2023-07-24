@@ -11,14 +11,14 @@
 The data used in experiments can be obtained [here](https://zenodo.org/record/7064308) (files `train_val.tar.gz`, `test.tar.gz`) and should be placed in `./data` directory.
 
 
-## Fit global FaIRGP model
+### Fit global FaIRGP model
 1. Choose in `config/FaIRGP.yaml` which scenarios to use for training
 2. Run from root directory
 ```bash
 $ python fit_FaIRGP.py --cfg=config/FaIRGP.yaml --o=path/to/output/directory
 ```
 
-## Fit spatial FaIRGP model
+### Fit spatial FaIRGP model
 1. Choose in `config/PlainGP.yaml` which scenarios to use for training
 2. Run from root directory
 ```bash
@@ -28,7 +28,7 @@ $ python fit_spatial_FaIRGP.py --cfg=config/spatial-FaIRGP.yaml --o=path/to/outp
 
 # Reproduce paper results
 
-## SSP global emulation benchmark
+#@# SSP global emulation benchmark
 
 1. Running evaluation of FaIRGP
 ```bash
@@ -48,7 +48,7 @@ $ python evaluate_FaIR.py --cfg=config/FaIR.yaml --o=path/to/output/directory
 4. Go to `notebooks/SSP-global-experiment-score-analysis.ipynb`
 
 
-## SSP spatial emulation benchmark
+#@# SSP spatial emulation benchmark
 
 1. Fit 4 spatial FaIRGP model on training set without {ssp126, ssp245, ssp370, ssp585}
 2. Fit 4 spatial PlainGP model on training set without {ssp126, ssp245, ssp370, ssp585}
@@ -58,7 +58,7 @@ $ python evaluate_FaIR.py --cfg=config/FaIR.yaml --o=path/to/output/directory
 
 
 
-## Installation
+# Installation
 
 Code implemented in Python 3.8.0
 
