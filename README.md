@@ -1,9 +1,12 @@
 # FaIRGP: A Bayesian Energy Balance Model for Surface Temperatures Emulation
 
-
 <p align="center">
   <img width="35%" src="docs/img/fairgp-logo.png"/>
 </p>
+
+
+        
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8180360.svg)](https://doi.org/10.5281/zenodo.8180360)
 
 
 # Getting started
