@@ -1,30 +1,22 @@
 """
 Nomenclature:
     - `scenarios` : scenario dataset used for training
-    - `inducing_scenario` : scenario used for inducing points
     - `fair_kwargs` : default keyed parameters to use in FaIR runs
-    - `d_map` : spatial maps of djs
-    - `q_map` : spatial maps of qjs
 """
 import os
 import sys
 from collections import namedtuple
-import numpy as np
-import torch
 from .preprocess_data import load_emissions_dataset, load_response_dataset, make_scenario, get_fair_params
 
 base_dir = os.path.join(os.getcwd(), '../..')
 sys.path.append(base_dir)
 
-from src.structures import ScenarioDataset, GridInducingScenario
+from src.structures import ScenarioDataset
 
 
 field_names = ['scenarios',
                'inducing_scenario',
                'fair_kwargs',
-               'S0',
-               'd_map',
-               'q_map',
                'misc']
 Data = namedtuple(typename='Data', field_names=field_names, defaults=(None,) * len(field_names))
 
@@ -72,11 +64,11 @@ def make_data(cfg):
     fair_kwargs = get_fair_params()
 
     # Load initial S0 map
-    S0 = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'S0_map.npy'))).double()
+    # S0 = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'S0_map.npy'))).double()
 
     # Load d and q maps
-    d_map = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'd_maps.npy'))).double()
-    q_map = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'q_maps.npy'))).double()
+    # d_map = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'd_maps.npy'))).double()
+    # q_map = torch.from_numpy(np.load(os.path.join(cfg['dataset']['dirpath'], 'q_maps.npy'))).double()
 
     # # Create inducing scenario
     # cfg_inducing = cfg['model']['inducing_scenario']
@@ -89,10 +81,6 @@ def make_data(cfg):
 
     # Encapsulate into named tuple object
     kwargs = {'scenarios': scenarios,
-              # 'inducing_scenario': inducing_scenario,
-              'fair_kwargs': fair_kwargs,
-              'S0': S0,
-              'd_map': d_map,
-              'q_map': q_map}
+              'fair_kwargs': fair_kwargs}
     data = Data(**kwargs)
     return data
