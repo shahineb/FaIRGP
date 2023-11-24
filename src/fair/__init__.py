@@ -4,11 +4,11 @@ from .ancil import get_gas_params, get_thermal_params
 from .forward import _run
 
 
-def get_params():
+def get_params(thermal_params_filename=None):
     gas_params_df = get_gas_params()
     gas_kwargs = {k: np.asarray(list(v.values()))
                   for k, v in gas_params_df.T.to_dict().items()}
-    thermal_params_df = get_thermal_params()
+    thermal_params_df = get_thermal_params(thermal_params_filename)
     d = thermal_params_df.T.d.values
     q = thermal_params_df.T.q.values
     base_kwargs = {'d': d,

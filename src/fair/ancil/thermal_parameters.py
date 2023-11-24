@@ -2,17 +2,18 @@ import os
 import pandas as pd
 
 
-def get_thermal_params():
+def get_thermal_params(file_name=None):
     """Gets default thermal parameters.
-    Returns
-    -------
-    thermal_params_df : :obj:`pandas.DataFrame`
-        Default thermal parameters
     """
-    thermal_params_filename = os.path.join(
-        os.path.dirname(__file__), "thermal_parameters_NORESM2-LM.csv"
-    )
+    if file_name is None:
+        file_path = os.path.join(
+            os.path.dirname(__file__), "thermal_parameters_NORESM2-LM.csv"
+        )
+    else:
+        file_path = os.path.join(
+            os.path.dirname(__file__), f"thermal_parameters_NORESM2-LM/{file_name}.csv"
+        )
     thermal_params_df = pd.read_csv(
-        thermal_params_filename, skiprows=1, index_col="Thermal Box"
+        file_path, skiprows=1, index_col="Thermal Box"
     ).T
     return thermal_params_df

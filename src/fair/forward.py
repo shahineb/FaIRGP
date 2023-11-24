@@ -24,10 +24,13 @@ def _run(
     rT,
     rA,
     PI_conc,
+    PI_SO2,
     emis2conc,
     f1,
     f2,
     f3,
+    f1aci,
+    f2aci,
     d,
     q,
     ext_forcing,
@@ -109,7 +112,7 @@ def _run(
             emis2conc=emis2conc,
         )
         RF[..., i] = tools.step_forcing(
-            C=C[..., i], PI_conc=PI_conc, f1=f1, f2=f2, f3=f3
+            C=C[..., i], PI_conc=PI_conc, f1=f1, f2=f2, f3=f3, f1aci=f1aci, f2aci=f2aci, PI_SO2=PI_SO2, emissions=inp_ar[..., i],
         )
         S[i], T[i] = tools.step_temperature(
             S_old=S[max(i - 1, 0)], F=np.sum(RF[..., i], axis=0) + ext_forcing[i], q=q, d=d, dt=tstep

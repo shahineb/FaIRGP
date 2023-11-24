@@ -74,7 +74,7 @@ def plot_contourf_with_zonal_avg(field, title="", levels=20, fontsize=14):
     plotax.plot(field_mean, field.lat, '--.', lw=2)
     plotax.fill_betweenx(field.lat, field_mean - field_std, field_mean + field_std, alpha=0.3)
     plotax.set_ylabel('Latitude', fontsize=fontsize)
-    plotax.set_xlabel('ΔT [K]', fontsize=fontsize)
+    plotax.set_xlabel(r'$Delta T$ (K)', fontsize=fontsize)
     plotax.grid()
     fig.suptitle(title, fontsize=fontsize)
     plt.tight_layout()
