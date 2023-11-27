@@ -86,13 +86,7 @@ def fit(model, data, cfg):
         loss = torch.sum(loss * wlat).div(loss.size(-1) * wlat.sum())
         loss.backward()
         optimizer.step()
-        ###
-        lengthscale = model.kernel.base_kernel.lengthscale.detach().squeeze()
-        outputscale = model.kernel.outputscale.detach().squeeze()
-        OU_scale = model.likelihood.noise.detach().squeeze()
-        training_iter.set_postfix_str(f"LL = {-loss.item()} | CO2={lengthscale[0]} | CH4={lengthscale[1]} | SO2={lengthscale[2]} | sigmaF={outputscale.item()} | OU={OU_scale.item()}")
-        ###
-        # training_iter.set_postfix_str(f"LL = {-loss.item()}")
+        training_iter.set_postfix_str(f"LL = {-loss.item()}")
     return model
 
 

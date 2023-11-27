@@ -41,7 +41,7 @@ def step_concentration(
     return C, R, G_A
 
 
-def step_forcing(C, PI_conc, f1, f2, f3, f1aci, f2aci, PI_SO2, emissions):
+def step_forcing(C, PI_conc, f1, f2, f3, f1aci, f2aci, PI_SO2, emissions, use_aci):
     logforc = ne.evaluate(
         "f1 * where( (C/PI_conc) <= 0, 0, log(C/PI_conc) )",
         {"f1": f1, "C": C, "PI_conc": PI_conc},
@@ -54,12 +54,11 @@ def step_forcing(C, PI_conc, f1, f2, f3, f1aci, f2aci, PI_SO2, emissions):
         "f3 * ( (sqrt( where(C<0 ,0 ,C ) ) - sqrt(PI_conc)) )",
         {"f3": f3, "C": C, "PI_conc": PI_conc},
     )
-    ari_linforc = f2 * emissions
-    linforc[2:] = 0.
-    ari_linforc[:2] = 0.
-    aci_logforc = f1aci * np.log(1 + emissions / PI_SO2)
-    aci_linforc = f2aci * emissions
-    RF = logforc + linforc + sqrtforc + aci_logforc + aci_linforc
+    RF = logforc + linforc + sqrtforc
+    if use_aci:
+        aci_logforc = f1aci * np.log(1 + emissions / PI_SO2)
+        aci_linforc = f2aci * emissions
+        RF = RF + aci_logforc + aci_linforc
     return RF
 
 

@@ -7,20 +7,13 @@ dataset:
   # Path to data directory
   dirpath: data/
 
-  # Keys of scenarios to load for training (commment scenarios to remove them)
+  # Keys of scenarios to load for training (commment scenarios to remove them from training set)
   keys:
     - historical
     - ssp126
     - ssp245
     - ssp370
     - ssp585
-
-
-
-# MODEL SPECIFICATIONS
-model:
-
-
 
 # TRAINING
 training:
@@ -29,8 +22,3 @@ training:
 
   # Learning rate
   lr: 0.1
-
-
-
-# EVALUATION
-evaluation:

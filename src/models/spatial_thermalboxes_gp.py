@@ -40,8 +40,8 @@ class SpatialThermalBoxesGP(GP):
         pattern_scaling.fit(glob_tas[:, None], all_tas.reshape(all_tas.size(0), -1))
         return pattern_scaling
 
-    def _compute_means(self, scenario_dataset):
-        means_dict = compute_means(scenario_dataset, self.pattern_scaling)
+    def _compute_means(self, scenario_dataset, use_aci=False):
+        means_dict = compute_means(scenario_dataset, self.pattern_scaling, use_aci=use_aci)
         return means_dict
 
     def _compute_covariance(self, scenario_dataset):
@@ -84,14 +84,14 @@ class SpatialThermalBoxesGP(GP):
             output = gpytorch.distributions.MultivariateNormal(posterior_mean.T, posterior_covar)
         return output
 
-    def _compute_forcing_mean(self, scenario_dataset):
-        mFs = compute_mF(scenario_dataset)
+    def _compute_forcing_mean(self, scenario_dataset, use_aci=False):
+        mFs = compute_mF(scenario_dataset, use_aci=use_aci)
         mF = torch.cat([v for v in mFs.values()])
         return mF
 
-    def forcing_posterior(self, test_scenarios, diag=True):
+    def forcing_posterior(self, test_scenarios, diag=True, use_aci=False):
         ntrain = len(self.train_scenarios.timesteps)
-        mF = self._compute_forcing_mean(test_scenarios).view(-1, 1)
+        mF = self._compute_forcing_mean(test_scenarios, use_aci=use_aci).view(-1, 1)
 
         # mu, sigma = self.train_scenarios.mu_glob_inputs, self.train_scenarios.sigma_glob_inputs
         # test_scenario_emissions_std = (test_scenarios.glob_inputs - mu) / sigma

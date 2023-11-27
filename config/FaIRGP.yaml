@@ -7,7 +7,7 @@ dataset:
   # Path to data directory
   dirpath: data/
 
-  # Keys of scenarios to load for training (commment scenarios to remove them)
+  # Keys of scenarios to load for training (commment scenarios to remove them from training set)
   keys:
     - historical
     - ssp126
@@ -16,22 +16,10 @@ dataset:
     - ssp585
 
 
-
-# MODEL SPECIFICATIONS
-model:
-
-
-
 # TRAINING
 training:
   # Number of training epochs
   n_epochs: 60
-  # n_epochs: 2
 
   # Learning rate
   lr: 0.1
-
-
-
-# EVALUATION
-evaluation:

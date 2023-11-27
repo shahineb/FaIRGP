@@ -1,7 +1,7 @@
 
 import numpy as np
 from .ancil import get_gas_params, get_thermal_params
-from .forward import _run
+from .forward import _run, _run_concentration_driven
 
 
 def get_params(thermal_params_filename=None):
@@ -17,12 +17,16 @@ def get_params(thermal_params_filename=None):
     return base_kwargs
 
 
-def run(time, emission, base_kwargs):
+def run(time, emission, base_kwargs, concentration_driven=False, use_aci=False):
     timestep = np.append(np.diff(time), np.diff(time)[-1])
     ext_forcing = np.zeros_like(time)
     run_kwargs = {'inp_ar': emission,
                   'timestep': timestep,
                   'ext_forcing': ext_forcing,
+                  'use_aci': use_aci,
                   **base_kwargs}
-    res = _run(**run_kwargs)
+    if concentration_driven:
+        res = _run_concentration_driven(**run_kwargs)
+    else:
+        res = _run(**run_kwargs)
     return res

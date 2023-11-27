@@ -9,14 +9,15 @@ import src.fair as fair
 from src.fair.tools import step_I, step_kernel
 
 
-def compute_means(scenario_dataset, pattern_scaling):
+def compute_means(scenario_dataset, pattern_scaling, use_aci=False):
     base_kwargs = fair.get_params()
     means = dict()
     nlat, nlon = len(scenario_dataset[0].lat), len(scenario_dataset[0].lon)
     for name, scenario in scenario_dataset.scenarios.items():
         res = fair.run(scenario.full_timesteps.numpy(),
                        scenario.full_glob_emissions.T.numpy(),
-                       base_kwargs)
+                       base_kwargs,
+                       use_aci=use_aci)
         T = res['T']
         T = scenario.trim_hist(T)
         T = pattern_scaling.predict(T.reshape(-1, 1)).reshape(-1, nlat, nlon)
@@ -67,13 +68,14 @@ def compute_covariance_scenario(scenario_dataset, scenario, I, q, d):
     return Kj.T
 
 
-def compute_mF(scenario_dataset):
+def compute_mF(scenario_dataset, use_aci=False):
     base_kwargs = fair.get_params()
     means = dict()
     for name, scenario in scenario_dataset.scenarios.items():
         res = fair.run(scenario.full_timesteps.numpy(),
                        scenario.full_glob_emissions.T.numpy(),
-                       base_kwargs)
+                       base_kwargs,
+                       use_aci=use_aci)
         mF = torch.from_numpy(res['RF'].sum(axis=0)).float()
         mF = scenario.trim_hist(mF)
         means.update({scenario: mF})
